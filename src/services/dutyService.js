@@ -9,7 +9,7 @@ import {
   where,
   query,
 } from "firebase/firestore";
-import { getMembers } from "@/services/memberService";
+import { getUsers } from "@/services/userService";
 const dutyRotationRef = doc(db, "team_meta", "duty_rotation");
 const membersCollectionRef = collection(db, "members");
 
@@ -102,7 +102,7 @@ export const getConfigData = async () => {
   try {
     // Chạy song song 2 request
     const [allMembers, rotationData] = await Promise.all([
-      getMembers(),        // Lấy tất cả member
+      getUsers(),        // Lấy tất cả member
       getRotationData(), // Lấy data xoay tua hiện tại
     ]);
 

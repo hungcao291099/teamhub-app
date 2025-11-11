@@ -1,8 +1,8 @@
-// src/features/members/MemberListSkeleton.jsx
+// src/features/members/UserListSkeleton.jsx
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-export function MemberListSkeleton() {
+export function UserListSkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {/* Tạo 4 card mờ */}

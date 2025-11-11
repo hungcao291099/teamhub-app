@@ -1,5 +1,5 @@
-// src/features/members/AddMemberDialog.jsx
-import { useState } from "react";
+// src/features/members/EditUserDialog.jsx
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,56 +8,66 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogClose, // Import thêm DialogClose
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
-import { addMember } from "@/services/memberService";
+import { updateUser } from "@/services/userService";
 
-export function AddMemberDialog({ onMemberAdded }) {
-  const [open, setOpen] = useState(false);
+export function EditUserDialog({ user, onUserUpdated, open, onOpenChange }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    // ĐIỂM QUAN TRỌNG: Lấy giá trị mặc định từ 'user'
+    defaultValues: {
+      name: user.name,
+      phone: user.phone || "",
+      avatar: user.avatar || "",
+    }
+  });
+
+  // Reset form khi 'user' prop thay đổi (để đảm bảo form luôn đúng)
+  useEffect(() => {
+    if (user) {
+      reset({
+        name: user.name,
+        phone: user.phone || "",
+        avatar: user.avatar || "",
+      });
+    }
+  }, [user, reset]);
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      // Dùng link ảnh avatar placeholder nếu người dùng không nhập
-      const memberData = {
-        name: data.name,
-        phone: data.phone || "",
+      // Dùng link ảnh avatar placeholder nếu người dùng xóa trống
+      const userData = {
+        ...data,
         avatar: data.avatar || `https://i.pravatar.cc/150?u=${data.name}`,
       };
       
-      const newMember = await addMember(memberData);
+      await updateUser(user.id, userData);
       
       // Gọi hàm callback từ cha để cập nhật UI
-      if (onMemberAdded) {
-        onMemberAdded(newMember);
+      if (onUserUpdated) {
+        onUserUpdated(user.id, userData); // Gửi ID và data mới
       }
       
-      reset(); // Xóa form
-      setOpen(false); // Đóng dialog
+      onOpenChange(false); // Đóng dialog
     } catch (error) {
-      console.error("Failed to add member:", error);
-      // Bạn có thể thêm state để hiển thị lỗi ở đây
+      console.error("Failed to update user:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Thêm thành viên</Button>
-      </DialogTrigger>
+    // Dialog này được điều khiển (controlled) từ component cha
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Thêm thành viên mới</DialogTitle>
+          <DialogTitle>Sửa thông tin: {user.name}</DialogTitle>
           <DialogDescription>
-            Điền thông tin thành viên vào bên dưới.
+            Cập nhật thông tin cho thành viên này.
           </DialogDescription>
         </DialogHeader>
         
@@ -82,7 +92,7 @@ export function AddMemberDialog({ onMemberAdded }) {
                 id="phone"
                 {...register("phone")}
                 className="col-span-3"
-                type="tel" // Gợi ý bàn phím số trên mobile
+                type="tel"
             />
             </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -97,8 +107,11 @@ export function AddMemberDialog({ onMemberAdded }) {
             />
           </div>
           <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Hủy
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Đang lưu..." : "Lưu"}
+              {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
             </Button>
           </DialogFooter>
         </form>

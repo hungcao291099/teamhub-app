@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { getMembers } from "@/services/memberService"; // Dùng lại service cũ
+import { getUsers } from "@/services/userService"; // Dùng lại service cũ
 import { createBeerParty } from "@/services/beerPartyService"; // Service mới
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,7 +29,7 @@ export function BeerCounterSetupPage() {
   useEffect(() => {
     const loadMembers = async () => {
       try {
-        const members = await getMembers();
+        const members = await getUsers();
         setAllMembers(members);
       } catch (error) {
         console.error("Lỗi tải thành viên:", error);

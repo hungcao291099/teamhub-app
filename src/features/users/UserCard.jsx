@@ -1,4 +1,4 @@
-// src/features/members/MemberCard.jsx
+// src/features/members/UserCard.jsx
 import { useState } from "react";
 import {
   Card,
@@ -23,22 +23,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { deleteMember } from "@/services/memberService";
+import { deleteUser } from "@/services/userService";
 import { MoreVertical, Phone } from "lucide-react"; 
-import { EditMemberDialog } from "./EditMemberDialog";
-export function MemberCard({ member, onMemberDeleted, onMemberUpdated }) {
+import { EditUserDialog } from "./EditUserDialog";
+export function UserCard({ user, onUserDeleted, onUserUpdated }) {
+  console.log(user);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteMember(member.id);
-      if (onMemberDeleted) {
-        onMemberDeleted(member.id); // Gọi callback báo cho cha
+      await deleteUser(user.id);
+      if (onUserDeleted) {
+        onUserDeleted(user.id); // Gọi callback báo cho cha
       }
     } catch (error) {
-      console.error("Failed to delete member:", error);
+      console.error("Failed to delete user:", error);
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
@@ -68,16 +69,16 @@ export function MemberCard({ member, onMemberDeleted, onMemberUpdated }) {
         {/* Nội dung Card */}
         <CardHeader className="flex items-center pt-8">
           <img
-            src={member.avatar || 'https://i.pravatar.cc/150'}
-            alt={member.name}
+            src={user.avatar || 'https://i.pravatar.cc/150'}
+            alt={user.name}
             className="w-24 h-24 rounded-full mb-4"
           />
-          <CardTitle>{member.name}</CardTitle>
+          <CardTitle>{user.name}</CardTitle>
         </CardHeader>
         <CardContent className="text-center">
           <p className="text-muted-foreground flex items-center justify-center gap-1.5">
             <Phone className="h-4 w-4" />
-            {member.phone || 'Chưa có SĐT'}
+            {user.phone || 'Chưa có SĐT'}
         </p>
         </CardContent>
       </Card>
@@ -89,7 +90,7 @@ export function MemberCard({ member, onMemberDeleted, onMemberUpdated }) {
             <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
             <AlertDialogDescription>
               Hành động này không thể hoàn tác. Thao tác này sẽ xóa vĩnh viễn thành viên
-              <span className="font-bold"> {member.name} </span>
+              <span className="font-bold"> {user.name} </span>
               khỏi cơ sở dữ liệu.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -101,11 +102,11 @@ export function MemberCard({ member, onMemberDeleted, onMemberUpdated }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <EditMemberDialog
-        member={member}
+      <EditUserDialog
+        user={user}
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
-        onMemberUpdated={onMemberUpdated}
+        onUserUpdated={onUserUpdated}
       />
     </>
   );
