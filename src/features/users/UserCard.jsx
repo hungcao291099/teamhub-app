@@ -26,8 +26,7 @@ import { Button } from "@/components/ui/button";
 import { deleteUser } from "@/services/userService";
 import { MoreVertical, Phone } from "lucide-react"; 
 import { EditUserDialog } from "./EditUserDialog";
-export function UserCard({ user, onUserDeleted, onUserUpdated }) {
-  console.log(user);
+export function UserCard({ user, onUserDeleted, onUserUpdated, isAdmin, currentUserId }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -50,21 +49,24 @@ export function UserCard({ user, onUserDeleted, onUserUpdated }) {
     <>
       <Card className="shadow-lg relative">
         {/* Nút 3 chấm (Dropdown Menu) */}
-        <div className="absolute top-2 right-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setShowEditDialog(true)}>Sửa (Edit)</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-500">
-                Xóa (Delete)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {isAdmin && (
+          <div className="absolute top-2 right-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setShowEditDialog(true)}>Sửa (Edit)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-500">
+                  Xóa (Delete)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+
 
         {/* Nội dung Card */}
         <CardHeader className="flex items-center pt-8">
@@ -107,6 +109,7 @@ export function UserCard({ user, onUserDeleted, onUserUpdated }) {
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
         onUserUpdated={onUserUpdated}
+        isAdmin={isAdmin}
       />
     </>
   );

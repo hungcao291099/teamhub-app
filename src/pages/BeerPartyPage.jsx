@@ -10,7 +10,12 @@ import { ChevronLeft, Plus, Minus, Crown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Animation
-const pageAnimation = { /* ... (Giống như các trang khác) ... */ };
+const pageAnimation = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
+};
+
 
 export function BeerPartyPage() {
   const { partyId } = useParams(); // Lấy ID từ URL

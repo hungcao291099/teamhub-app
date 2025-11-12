@@ -43,6 +43,7 @@ import { AddTransactionForm } from "./AddTransactionForm"; // Chúng ta sẽ t�
 import { Skeleton } from "@/components/ui/skeleton";
 import { FundTransactionCard } from "./FundTransactionCard";
 import { Plus } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth.js";
 // Hàm helper định dạng tiền tệ
 const formatCurrency = (number) => {
   return new Intl.NumberFormat("vi-VN", {
@@ -58,6 +59,9 @@ export function FundLedger() {
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [txToDelete, setTxToDelete] = useState(null);
 
+  const { userDocument } = useAuth();
+  const userRole = userDocument?.role;
+  const canManageFund = userRole === 'admin' || userRole === 'accounting';
   // Hàm fetch dữ liệu
   const fetchData = async () => {
     try {
@@ -132,19 +136,23 @@ export function FundLedger() {
         </div>
 
         {/* 2. Nút thêm giao dịch */}
-        <DialogTrigger asChild>
-          <Button className="hidden md:inline-flex mb-6">Tạo giao dịch mới</Button>
-        </DialogTrigger>
+        {canManageFund && (
+          <DialogTrigger asChild>
+            <Button className="hidden md:inline-flex mb-6">Tạo giao dịch mới</Button>
+          </DialogTrigger>
+        )}
 
         {/* 3. Nút FAB cho MOBILE */}
-        <DialogTrigger asChild>
-          <Button
-            className="md:hidden fixed bottom-24 right-4 h-14 w-14 rounded-full shadow-lg z-10"
-            size="icon"
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
-        </DialogTrigger>
+        {canManageFund && (
+          <DialogTrigger asChild>
+            <Button
+              className="md:hidden fixed bottom-24 right-4 h-14 w-14 rounded-full shadow-lg z-10"
+              size="icon"
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
+          </DialogTrigger>
+        )}
 
         {/* 3. Bảng lịch sử giao dịch */}
         <h3 className="text-2xl font-bold mt-8 mb-4">Lịch sử giao dịch</h3>
@@ -156,7 +164,7 @@ export function FundLedger() {
                 <TableHead className="text-right text-green-600">Thu</TableHead>
                 <TableHead className="text-right text-red-600">Chi</TableHead>
                 <TableHead className="text-right">Số dư</TableHead>
-                <TableHead className="text-right">Hành động</TableHead>
+                {canManageFund && <TableHead className="text-right">Hành động</TableHead>}
             </TableRow>
             </TableHeader>
             <TableBody>
@@ -175,30 +183,37 @@ export function FundLedger() {
                 <TableCell className="text-right font-medium">
                     {formatCurrency(t.balanceAfter)}
                 </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem 
-                        onClick={() => setTxToDelete(t)} 
-                        className="text-red-500"
-                      >
-                        Xóa
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                {canManageFund && (
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem 
+                          onClick={() => setTxToDelete(t)} 
+                          className="text-red-500"
+                        >
+                          Xóa
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                )}
                 </TableRow>
             ))}
             </TableBody>
         </Table>
         <div className="space-y-4 md:hidden"> {/* <-- Chỉ hiện trên mobile */}
             {transactions.map((t) => (
-            <FundTransactionCard key={t.id} transaction={t}  onDelete={() => setTxToDelete(t)}/>
+            <FundTransactionCard 
+                key={t.id} 
+                transaction={t}  
+                onDelete={() => setTxToDelete(t)}
+                canManage={canManageFund}
+            />
             ))}
         </div>
         </div>

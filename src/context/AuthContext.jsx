@@ -6,37 +6,69 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  reauthenticateWithCredential,
+  updatePassword,
+  EmailAuthProvider
 } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, writeBatch, updateDoc, Timestamp } from "firebase/firestore";
+import { streamCurrentUser } from "@/services/userService.js";
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const [userDocument, setUserDocument] = useState(null);
+  // Listener 1: Chỉ lắng nghe trạng thái Auth (Login/Logout)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      setLoading(false);
+      if (!user) {
+        // Nếu logout, xóa document và set loading false
+        setUserDocument(null);
+        setLoading(false);
+      }
     });
-    return unsubscribe;
+    return () => unsubscribeAuth();
   }, []);
+
+  // Listener 2: Lắng nghe Document (CHỈ KHI ĐÃ LOGIN)
+  // Phụ thuộc vào [currentUser]
+  useEffect(() => {
+    // Nếu không có user (đã logout), không làm gì cả
+    if (!currentUser) return; 
+
+    // Nếu có user, bắt đầu "nghe" document
+    setLoading(true); // Báo là đang tải data user
+    
+    const unsubscribeDoc = streamCurrentUser(currentUser.uid, (docData) => {
+      setUserDocument(docData);
+      setLoading(false); // Tải xong data
+    });
+    
+    // Hàm dọn dẹp: Sẽ chạy khi currentUser bị đổi (logout)
+    return () => unsubscribeDoc();
+
+  }, [currentUser]);
 
   // ĐĂNG KÝ (Tạo user trong Auth và document trong Firestore)
   const signup = async (email, password, name, phone) => {
+    // 1. Tạo user trong Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    const defaultAvatar = `https://i.pravatar.cc/150?u=${user.uid}`;
-    // Tạo document với ID là UID, và gán vai trò "member"
-    await setDoc(doc(db, "users", user.uid), {
+    
+    // 2. Tạo user document trong Firestore (Không cần batch)
+    const userRef = doc(db, "users", user.uid);
+    await setDoc(userRef, {
       name: name,
       email: email,
       phone: phone || "",
-      role: "member", // Vai trò mặc định
-      avatar: defaultAvatar
+      role: "member", // Role mặc định khi tự đăng ký
+      avatar: `https://i.pravatar.cc/150?u=${user.uid}`
     });
+    
+
     return userCredential;
   };
 
@@ -54,14 +86,27 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = (email) => {
     return sendPasswordResetEmail(auth, email);
   };
+  const reauthenticateAndChangePassword = async (oldPassword, newPassword) => {
+      if (!currentUser) throw new Error("Chưa đăng nhập");
 
+      // 1. Lấy thông tin xác thực với mật khẩu CŨ
+      const credential = EmailAuthProvider.credential(currentUser.email, oldPassword);
+
+      // 2. Xác thực lại
+      await reauthenticateWithCredential(currentUser, credential);
+      
+      // 3. (Nếu xác thực thành công) Đặt mật khẩu MỚI
+      await updatePassword(currentUser, newPassword);
+    };
   const value = {
     currentUser,
     loading,
+    userDocument,
     signup,
     login,
     logout,
-    resetPassword
+    resetPassword,
+    reauthenticateAndChangePassword
   };
 
   return (

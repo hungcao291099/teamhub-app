@@ -3,26 +3,36 @@ import { useState, useEffect } from "react";
 import { getUsers } from "@/services/userService.js"; // Sửa
 import { UserCard } from "./UserCard.jsx"; // Sửa
 import { UserListSkeleton } from "./UserListSkeleton";
+import { useAuth } from "@/hooks/useAuth.js";
+
 export function UserList() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const { userDocument, currentUser } = useAuth();
+  const isAdmin = userDocument?.role === 'admin';
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        const data = await getUsers();
-        setUsers(data);
-        setError(null);
-      } catch (err) {
-        setError("Không thể tải danh sách người dùng.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUsers();
-  }, []);
+    // Chỉ fetch data NẾU user đã đăng nhập
+    if (currentUser) { 
+      const fetchUsers = async () => {
+        try {
+          setLoading(true);
+          const data = await getUsers();
+          setUsers(data);
+          setError(null);
+        } catch (err) {
+          setError("Không thể tải danh sách người dùng.");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchUsers();
+    } else {
+      // Nếu user logout, dọn dẹp state
+      setUsers([]);
+      setLoading(false);
+    }
+  }, [currentUser]);
 
   const handleUserDeleted = (deletedUserId) => {
     setUsers((prevUsers) =>
@@ -54,9 +64,11 @@ export function UserList() {
         {users.map((user) => (
           <UserCard
             key={user.id}
-            member={user} // Prop có thể giữ tên cũ
-            onMemberDeleted={handleUserDeleted}
-            onMemberUpdated={handleUserUpdated}
+            user={user} // Prop có thể giữ tên cũ
+            onUserDeleted={handleUserDeleted}
+            onUserUpdated={handleUserUpdated}
+            isAdmin={isAdmin}
+            currentUserId={currentUser.uid}
           />
         ))}
       </div>

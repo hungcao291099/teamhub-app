@@ -9,32 +9,47 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { updateUser } from "@/services/userService";
 
-export function EditUserDialog({ user, onUserUpdated, open, onOpenChange }) {
+export function EditUserDialog({ user, onUserUpdated, open, onOpenChange, isAdmin }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
-    // ĐIỂM QUAN TRỌNG: Lấy giá trị mặc định từ 'user'
+  const form = useForm({
     defaultValues: {
       name: user.name,
       phone: user.phone || "",
       avatar: user.avatar || "",
+      role: user.role || "member",
     }
   });
 
-  // Reset form khi 'user' prop thay đổi (để đảm bảo form luôn đúng)
   useEffect(() => {
     if (user) {
-      reset({
+      form.reset({
         name: user.name,
         phone: user.phone || "",
         avatar: user.avatar || "",
+        role: user.role || "member",
       });
     }
-  }, [user, reset]);
+  }, [user, form.reset]);
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
@@ -71,50 +86,91 @@ export function EditUserDialog({ user, onUserUpdated, open, onOpenChange }) {
           </DialogDescription>
         </DialogHeader>
         
-        {/* Đây là Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Tên
-            </Label>
-            <Input
-              id="name"
-              {...register("name", { required: "Tên là bắt buộc" })}
-              className="col-span-3"
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            
+            {/* 🚀 SỬA 3: Refactor "Tên" dùng FormField */}
+            <FormField
+              control={form.control}
+              name="name"
+              rules={{ required: "Tên là bắt buộc" }}
+              render={({ field }) => (
+                <FormItem className="grid grid-cols-4 items-center gap-x-4 gap-y-1">
+                  <FormLabel className="text-right">Tên</FormLabel>
+                  <FormControl className="col-span-3">
+                    <Input id="name" {...field} />
+                  </FormControl>
+                  <FormMessage className="col-span-4 text-red-500 text-sm text-right" />
+                </FormItem>
+              )}
             />
-            {errors.name && <p className="col-span-4 text-red-500 text-sm text-right">{errors.name.message}</p>}
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="phone" className="text-right">
-                Điện thoại
-            </Label>
-            <Input
-                id="phone"
-                {...register("phone")}
-                className="col-span-3"
-                type="tel"
+
+            {/* 🚀 SỬA 3: Refactor "Điện thoại" dùng FormField */}
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem className="grid grid-cols-4 items-center gap-x-4 gap-y-1">
+                  <FormLabel className="text-right">Điện thoại</FormLabel>
+                  <FormControl className="col-span-3">
+                    <Input id="phone" type="tel" {...field} />
+                  </FormControl>
+                  <FormMessage className="col-span-4 text-red-500 text-sm text-right" />
+                </FormItem>
+              )}
             />
-            </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="avatar" className="text-right">
-              Link Avatar
-            </Label>
-            <Input
-              id="avatar"
-              {...register("avatar")}
-              className="col-span-3"
-              placeholder="Để trống để dùng ảnh ngẫu nhiên"
+
+            {/* 🚀 SỬA 3: Refactor "Avatar" dùng FormField */}
+            <FormField
+              control={form.control}
+              name="avatar"
+              render={({ field }) => (
+                <FormItem className="grid grid-cols-4 items-center gap-x-4 gap-y-1">
+                  <FormLabel className="text-right">Link Avatar</FormLabel>
+                  <FormControl className="col-span-3">
+                    <Input id="avatar" placeholder="Để trống..." {...field} />
+                  </FormControl>
+                  <FormMessage className="col-span-4 text-red-500 text-sm text-right" />
+                </FormItem>
+              )}
             />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Hủy
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
-            </Button>
-          </DialogFooter>
-        </form>
+            
+            {/* Khối "Role" (Đã đúng) */}
+            {isAdmin && (
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem className="grid grid-cols-4 items-center gap-x-4 gap-y-1">
+                    <FormLabel className="text-right">Vai trò</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl className="col-span-3">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn vai trò" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="admin">Quản trị</SelectItem>
+                        <SelectItem value="accounting">Kế toán</SelectItem>
+                        <SelectItem value="member">Thành viên</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="col-span-4 text-red-500 text-sm text-right" />
+                  </FormItem>
+                )}
+              />
+            )}
+            
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Hủy
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

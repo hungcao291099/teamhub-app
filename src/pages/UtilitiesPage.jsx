@@ -2,8 +2,9 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Beer, ChevronRight, ClipboardPlus, ClipboardList, CalendarDays, Loader2 } from "lucide-react";
+import { Beer, ChevronRight, ClipboardPlus, ClipboardList, CalendarDays, Loader2, UserPlus } from "lucide-react";
 import { findActiveParty } from "@/services/beerPartyService";
+import { useAuth } from "@/hooks/useAuth.js";
 
 // Animation
 const pageAnimation = {
@@ -15,6 +16,8 @@ const pageAnimation = {
 export function UtilitiesPage() {
   const [checkingParty, setCheckingParty] = useState(false); // State loading
   const navigate = useNavigate();
+  const { userDocument } = useAuth();
+  const isAdmin = userDocument?.role === 'admin';
 
   const handleBeerCounterClick = async () => {
     setCheckingParty(true);
@@ -68,7 +71,15 @@ export function UtilitiesPage() {
       isLoading: checkingParty,       // Giờ đã hợp lệ
     },
   ];
-
+    const adminUtilities = [
+        {
+        id: "invite",
+        to: "/utilities/invite",
+        title: "Mời thành viên",
+        description: "Thêm email vào danh sách được phép đăng ký.",
+        icon: UserPlus,
+        }
+    ];
   return (
     <motion.div
       variants={pageAnimation}
@@ -82,6 +93,9 @@ export function UtilitiesPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Sửa lại key={util.id} */}
         {utilities.map((util) => (
+          <UtilityCard key={util.id} {...util} />
+        ))}
+        {isAdmin && adminUtilities.map((util) => (
           <UtilityCard key={util.id} {...util} />
         ))}
       </div>

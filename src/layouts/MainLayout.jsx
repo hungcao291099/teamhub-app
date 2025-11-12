@@ -1,12 +1,13 @@
 // src/layouts/MainLayout.jsx
-import { Outlet, NavLink, useNavigate } from "react-router-dom"; // Thêm useNavigate
+import { Outlet, NavLink, useNavigate, Link } from "react-router-dom"; // Thêm useNavigate
 import { 
   Users, 
   DollarSign, 
   LayoutDashboard, 
   AppWindow, 
   LogOut, // Thêm icon Đăng xuất
-  User    // Thêm icon User (cho mobile)
+  User,    // Thêm icon User (cho mobile)
+  UserCircle
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { motion, AnimatePresence } from "framer-motion";
@@ -60,12 +61,19 @@ export function MainLayout() {
                 <DesktopNavLink key={item.to} to={item.to} label={item.label} icon={item.icon} />
               ))}
             </nav>
-            
-            {/* NÚT ĐĂNG XUẤT (DESKTOP) */}
-            <Button variant="ghost" onClick={handleLogout} className="justify-start text-muted-foreground hover:text-red-500">
-              <LogOut className="h-5 w-5 mr-3" />
-              <span>Đăng xuất</span>
-            </Button>
+            <div>
+              <DesktopNavLink 
+                  to="/account" 
+                  label="Tài khoản của tôi" 
+                  icon={UserCircle} 
+                  />
+              {/* NÚT ĐĂNG XUẤT (DESKTOP) */}
+              <Button variant="ghost" onClick={handleLogout} className="justify-start text-muted-foreground hover:text-red-500">
+                <LogOut className="h-5 w-5 mr-3" />
+                <span>Đăng xuất</span>
+              </Button>
+
+              </div>
           </div>
         </aside>
 
@@ -83,6 +91,12 @@ export function MainLayout() {
                  </Button>
                </DropdownMenuTrigger>
                <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                   <Link to="/account">
+                     <UserCircle className="h-4 w-4 mr-2" />
+                     Tài khoản của tôi
+                   </Link>
+                 </DropdownMenuItem>
                  <DropdownMenuItem onClick={handleLogout} className="text-red-500">
                    <LogOut className="h-4 w-4 mr-2" />
                    Đăng xuất

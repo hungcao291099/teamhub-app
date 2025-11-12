@@ -9,6 +9,7 @@ import {
   deleteDoc,
   runTransaction,
   getDoc,
+  onSnapshot
 } from "firebase/firestore";
 
 const usersCollectionRef = collection(db, "users");
@@ -58,4 +59,18 @@ export const deleteUser = async (userId) => {
     console.error("Giao dịch xóa user thất bại:", error);
     throw error;
   }
+};
+
+export const streamCurrentUser = (uid, callback) => {
+  const userDocRef = doc(db, "users", uid);
+  
+  const unsubscribe = onSnapshot(userDocRef, (doc) => {
+    if (doc.exists()) {
+      callback({ id: doc.id, ...doc.data() });
+    } else {
+      callback(null); // Không tìm thấy user (lỗi hiếm)
+    }
+  });
+
+  return unsubscribe; // Trả về hàm "hủy nghe"
 };

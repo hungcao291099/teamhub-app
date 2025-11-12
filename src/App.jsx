@@ -17,7 +17,8 @@ import { BeerCounterSetupPage } from "@/pages/BeerCounterSetupPage.jsx";
 import { BeerPartyPage } from "@/pages/BeerPartyPage.jsx";
 import { DutyPage } from "@/pages/DutyPage.jsx";
 import { TeamCalendarPage } from "@/pages/TeamCalendarPage.jsx";
-
+import { MyAccountPage } from "@/pages/MyAccountPage.jsx";
+import { InvitePage } from "@/pages/InvitePage.jsx";
 function App() {
   return (
     <BrowserRouter>
@@ -39,6 +40,8 @@ function App() {
             <Route path="utilities/beer-wheel" element={<BeerSpinWheelPage />} />
             <Route path="utilities/beer-counter-setup" element={<BeerCounterSetupPage />} />
             <Route path="utilities/beer-party/:partyId" element={<BeerPartyPage />} />
+            <Route path="account" element={<MyAccountPage />} />
+            <Route path="utilities/invite" element={<InvitePage />} />
           </Route>
         </Route>
         

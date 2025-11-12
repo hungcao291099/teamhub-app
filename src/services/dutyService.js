@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { getUsers } from "@/services/userService";
 const dutyRotationRef = doc(db, "team_meta", "duty_rotation");
-const membersCollectionRef = collection(db, "members");
+const membersCollectionRef = collection(db, "users");
 
 // Hàm lấy thông tin xoay tua VÀ thông tin thành viên
 export const getRotationData = async () => {

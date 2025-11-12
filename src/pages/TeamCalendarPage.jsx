@@ -16,7 +16,12 @@ import { format, isSameDay } from "date-fns";
 import { vi } from "date-fns/locale";
 
 // Animation
-const pageAnimation = { /* ... (giống các trang khác) ... */ };
+const pageAnimation = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
+};
+
 
 export function TeamCalendarPage() {
   const [allEvents, setAllEvents] = useState([]);
