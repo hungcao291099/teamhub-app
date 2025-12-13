@@ -69,7 +69,10 @@ class UserController {
         }
         // Normalize path for URL (windows uses backslash, browser needs forward slash)
         // Public URL: http://localhost:3000/uploads/filename
-        const avatarUrl = `http://localhost:3000/uploads/${req.file.filename}`;
+        // Return relative path. Frontend/Browser will resolve this against current origin.
+        // Or frontend should prepend API_URL if needed.
+        // For production with Nginx proxying /uploads, relative is best.
+        const avatarUrl = `/uploads/${req.file.filename}`;
         res.send({ avatarUrl });
     };
 

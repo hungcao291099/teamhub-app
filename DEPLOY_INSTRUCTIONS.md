@@ -56,9 +56,33 @@ Follow these steps to deploy the TeamHub application on a fresh Ubuntu server.
         touch server/database.sqlite
         docker-compose up -d
         ```
--   **Permission Issues (Docker)**: If you see `Permission denied` when running `docker-compose`.
-    -   **Fix 1 (Recommended)**: Run `newgrp docker` to refresh group membership, then try again.
-    -   **Fix 2 (Temporary)**: Run with sudo: `sudo docker-compose up -d --build`.
+    **CRITICAL ERROR FIX**: If you see `KeyError: 'ContainerConfig'` or similar python errors, it means you are using the old Legacy `docker-compose` (v1) which is incompatible with modern Docker.
+    
+    **Solution:** Use the new Docker Compose V2 command (space instead of hyphen):
+    ```bash
+    # Check if you have v2
+    docker compose version
+    
+    # Run with V2
+    docker compose up -d --build
+    ```
+    
+    If `docker compose` command is not found:
+    ```bash
+    sudo apt install docker-compose-plugin
+    docker compose up -d --build
+    ```
+
+-   **Permission Issues (Docker)**: If you see `Permission denied`.
+    -   **Fix**: `sudo docker compose up -d --build` OR `newgrp docker` first.
+
+-   **Container Conflict**: If you see `Conflict. The container name ... is already in use`.
+    -   **Fix**: Remove the old stuck containers:
+        ```bash
+        sudo docker rm -f $(sudo docker ps -aq)
+        ```
+        Then try up again.
+
     
 -   **Permission Issues (Files)**: Ensure the user running docker has permissions to write to `server/public/uploads` and `server/database.sqlite`.
 -   **DNS/Network Issues**: If you see `Temporary failure resolving 'archive.ubuntu.com'`, your server cannot resolve domain names.

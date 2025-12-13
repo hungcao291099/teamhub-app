@@ -7,10 +7,18 @@ export default defineConfig({
   plugins: [
     react(),
     jsconfigPaths() // <-- 2. Thêm plugin vào đây
-  ], 
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  server: {
+    proxy: {
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 })
