@@ -10,14 +10,21 @@ import dutyRoutes from "./routes/duty";
 // Beer routes removed
 import userRoutes from "./routes/users";
 import { User } from "./entities/User";
+import { initSocket } from "./socket";
+import { createServer } from "http";
+import path from "path";
 
 const app = express()
 const port = 3000
 
-app.use(cors())
+// Config CORS
+app.use(cors({
+    origin: ["http://localhost:5173", "https://itteamhub.netlify.app"],
+    credentials: true
+}));
+
 app.use(express.json())
 // Serve static files from 'public' directory
-import path from "path";
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
 app.use("/auth", authRoutes);
@@ -26,7 +33,6 @@ app.use("/invitations", invitationRoutes);
 app.use("/funds", fundRoutes);
 app.use("/duty", dutyRoutes);
 app.use("/users", userRoutes);
-import { createServer } from "http";
 
 const httpServer = createServer(app);
 
@@ -59,6 +65,7 @@ AppDataSource.initialize().then(async () => {
         res.send("TeamHub API is running!")
     })
 
+    // Init Socket
     // Init Socket
     initSocket(httpServer);
 
