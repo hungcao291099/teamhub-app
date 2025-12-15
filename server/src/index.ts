@@ -67,9 +67,14 @@ AppDataSource.initialize().then(async () => {
         }
     }
 
-    app.get("/", (req, res) => {
-        res.send("TeamHub API is running!")
-    })
+    //app.get("/", (req, res) => {
+    //    res.send("TeamHub API is running!")
+    //})
+    const staticPath = path.join(__dirname, "../../dist");
+    app.use(express.static(staticPath));
+    app.get("*", (req, res) => {
+        res.sendFile(path.join(staticPath, "index.html"));
+    });
 
     // Init Socket
     // Init Socket

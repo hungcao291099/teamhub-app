@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Helper to init socket
   const connectSocket = (token: string) => {
     const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-    const newSocket = io(socketUrl, {
+    const newSocket = io({
       auth: { token }
     });
 
