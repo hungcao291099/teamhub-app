@@ -17,7 +17,7 @@ import { createServer } from "http";
 import path from "path";
 
 const app = express()
-const port = 3000
+const port = 3001
 
 // Config CORS
 app.use(cors({

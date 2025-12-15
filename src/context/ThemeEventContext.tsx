@@ -57,7 +57,6 @@ export function ThemeEventProvider({ children }: { children: React.ReactNode }) 
             await updateGlobalTheme(id);
         } catch (error) {
             console.error("Failed to update global theme", error);
-            // Optional: Revert if failed
         }
     };
 
