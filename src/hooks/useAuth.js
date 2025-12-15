@@ -1,7 +1,11 @@
 // src/hooks/useAuth.js
 import { useContext } from "react";
-import { AuthContext } from "@/context/AuthContext.jsx"; // Thêm .jsx
+import { AuthContext } from "@/context/AuthContext"; // Remove .jsx extension
 
 export const useAuth = () => {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 };

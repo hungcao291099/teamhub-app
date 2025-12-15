@@ -58,6 +58,34 @@ export const initSocket = (httpServer: HttpServer) => {
         // Send current online users to newly connected user
         socket.emit("users:online", Array.from(onlineUsers));
 
+        // Chat: Join conversation rooms
+        socket.on("chat:join", (conversationId: number) => {
+            socket.join(`conversation_${conversationId}`);
+            console.log(`User ${userId} joined conversation ${conversationId}`);
+        });
+
+        // Chat: Leave conversation room
+        socket.on("chat:leave", (conversationId: number) => {
+            socket.leave(`conversation_${conversationId}`);
+            console.log(`User ${userId} left conversation ${conversationId}`);
+        });
+
+        // Chat: Typing indicators
+        socket.on("chat:typing_start", ({ conversationId, username }) => {
+            socket.to(`conversation_${conversationId}`).emit("chat:typing_start", {
+                userId,
+                username,
+                conversationId
+            });
+        });
+
+        socket.on("chat:typing_stop", ({ conversationId }) => {
+            socket.to(`conversation_${conversationId}`).emit("chat:typing_stop", {
+                userId,
+                conversationId
+            });
+        });
+
         socket.on("disconnect", () => {
             console.log(`User disconnected: ${userId} [${clientType}]`);
 

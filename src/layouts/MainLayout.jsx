@@ -23,6 +23,7 @@ import {
 import { PageTransition } from "@/components/common/PageTransition"; // Import PageTransition
 import { LiquidNavBar } from "@/components/liquid/LiquidNavBar";
 import { LiquidSideBar } from "@/components/liquid/LiquidSideBar";
+import { ChatButton } from "@/features/chat/components/ChatButton";
 
 // Danh sách các link nav (đã xóa Xoay tua)
 const navItems = [
@@ -64,6 +65,7 @@ export function MainLayout() {
           }
           footer={
             <div className="space-y-4">
+              <ChatButton />
               <DesktopNavLink
                 to="/account"
                 label="Tài khoản của tôi"
