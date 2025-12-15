@@ -14,8 +14,25 @@ export function UserList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [onlineUserIds, setOnlineUserIds] = useState([]);
   const { currentUser, socket } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
+
+  // Listen for online users updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleOnlineUsers = (userIds) => {
+      setOnlineUserIds(userIds);
+    };
+
+    socket.on("users:online", handleOnlineUsers);
+
+    return () => {
+      socket.off("users:online", handleOnlineUsers);
+    };
+  }, [socket]);
+
   useEffect(() => {
     // Chỉ fetch data NẾU user đã đăng nhập
     if (currentUser) {
@@ -101,11 +118,12 @@ export function UserList() {
         {users.map((user) => (
           <UserCard
             key={user.id}
-            user={user} // Prop có thể giữ tên cũ
+            user={user}
             onUserDeleted={handleUserDeleted}
             onUserUpdated={handleUserUpdated}
             isAdmin={isAdmin}
             currentUserId={currentUser.id}
+            isOnline={onlineUserIds.includes(user.id)}
           />
         ))}
       </div>

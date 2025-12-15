@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { deleteUser } from "@/services/userService";
 import { MoreVertical, Phone } from "lucide-react";
 import { EditUserDialog } from "./EditUserDialog";
-export function UserCard({ user, onUserDeleted, onUserUpdated, isAdmin, currentUserId }) {
+export function UserCard({ user, onUserDeleted, onUserUpdated, isAdmin, currentUserId, isOnline }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -87,11 +87,18 @@ export function UserCard({ user, onUserDeleted, onUserUpdated, isAdmin, currentU
 
         {/* Nội dung Card */}
         <CardHeader className="flex items-center pt-8">
-          <img
-            src={user.avatarUrl || 'https://i.pravatar.cc/150'}
-            alt={user.name}
-            className="w-24 h-24 rounded-full mb-4"
-          />
+          <div className="relative">
+            <img
+              src={user.avatarUrl || 'https://i.pravatar.cc/150'}
+              alt={user.name}
+              className="w-24 h-24 rounded-full mb-4"
+            />
+            {/* Online indicator - only show when online */}
+            {isOnline && (
+              <span className="absolute bottom-4 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse"
+                title="Đang online" />
+            )}
+          </div>
           <CardTitle>{user.name}</CardTitle>
         </CardHeader>
         <CardContent className="text-center">

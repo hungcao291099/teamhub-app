@@ -5,6 +5,16 @@ import config from "./config";
 
 let io: SocketIOServer;
 
+// Track online users (Set of user IDs)
+const onlineUsers = new Set<number>();
+
+// Helper to broadcast online users list
+const broadcastOnlineUsers = () => {
+    if (io) {
+        io.emit("users:online", Array.from(onlineUsers));
+    }
+};
+
 export const initSocket = (httpServer: HttpServer) => {
     io = new SocketIOServer(httpServer, {
         cors: {
@@ -41,13 +51,37 @@ export const initSocket = (httpServer: HttpServer) => {
         // Differentiate by clientType to allow 1 Web + 1 App
         socket.join(`user_${userId}_${clientType}`);
 
+        // Track online user
+        onlineUsers.add(userId);
+        broadcastOnlineUsers();
+
+        // Send current online users to newly connected user
+        socket.emit("users:online", Array.from(onlineUsers));
+
         socket.on("disconnect", () => {
             console.log(`User disconnected: ${userId} [${clientType}]`);
+
+            // Check if user has any other connections before removing from online list
+            const sockets = io.sockets.sockets;
+            let stillConnected = false;
+            sockets.forEach((s) => {
+                if ((s as any).userId === userId && s.id !== socket.id) {
+                    stillConnected = true;
+                }
+            });
+
+            if (!stillConnected) {
+                onlineUsers.delete(userId);
+                broadcastOnlineUsers();
+            }
         });
     });
 
     return io;
 };
+
+// Export getter for online users
+export const getOnlineUsers = () => Array.from(onlineUsers);
 
 export const getIO = () => {
     if (!io) {
