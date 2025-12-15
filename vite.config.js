@@ -14,18 +14,19 @@ export default defineConfig({
     },
   },
   server: {
-    '/settings': {
-      target: 'http://localhost:3001',
-      changeOrigin: true,
-    },
-    '/app': {
-      target: 'http://localhost:3001',
-      changeOrigin: true,
-    },
-    '/uploads': {
-      target: 'http://localhost:3001',
-      changeOrigin: true,
+    proxy: {
+      '/settings': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/app': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
-},
 })
