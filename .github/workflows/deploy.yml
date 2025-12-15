@@ -17,14 +17,19 @@ jobs:
 
       - name: Deploy with Docker Compose
         run: |
-           # The repo is already checked out to the runner's work directory
+          # The repo is already checked out to the runner's work directory
           
           # Create .env from secrets (Optional, if you use secrets for env vars)
           # echo "${{ secrets.ENV_FILE }}" > .env
           
           # Build and Run
           # Since we are ON the server, we just run docker compose
-          docker compose up -d --build
+          # 1. Build explicitly (logs visible to debug errors)
+          docker compose build
           
-          # Cleanup
-          docker image prune -f
+          # 2. Run in detached mode + Silence output + Close Stdin
+          # This prevents the GitHub Runner from waiting for "background" logs forever
+          docker compose up -d < /dev/null > /dev/null 2>&1
+          
+          # 3. Cleanup (silenced)
+          docker image prune -f > /dev/null 2>&1
