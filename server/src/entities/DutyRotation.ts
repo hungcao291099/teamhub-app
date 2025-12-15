@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column } from "typeorm"
 
-@Entity()
+@Entity("duty_rotation")
 export class DutyRotation {
     @PrimaryGeneratedColumn()
     id: number

@@ -1,6 +1,6 @@
 import { Entity, PrimaryColumn, Column } from "typeorm"
 
-@Entity()
+@Entity("global_setting")
 export class GlobalSetting {
     @PrimaryColumn()
     key: string

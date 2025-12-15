@@ -22,6 +22,7 @@ export function ThemeEventProvider({ children }: { children: React.ReactNode }) 
             try {
                 const data = await getGlobalTheme();
                 if (data && data.themeId && getThemeById(data.themeId)) {
+                    console.log("Client loaded global theme:", data.themeId);
                     setCurrentThemeId(data.themeId);
                 }
             } catch (error) {

@@ -8,6 +8,7 @@ const settingRepo = AppDataSource.getRepository(GlobalSetting);
 export const getTheme = async (req: Request, res: Response) => {
     try {
         const setting = await settingRepo.findOne({ where: { key: 'theme_event' } });
+        console.log("Theme fetched db:", setting);
         res.json({ themeId: setting ? setting.value : 'default' });
     } catch (error) {
         console.error("Error fetching theme:", error);
@@ -18,6 +19,7 @@ export const getTheme = async (req: Request, res: Response) => {
 export const updateTheme = async (req: Request, res: Response) => {
     try {
         const { themeId } = req.body;
+        console.log("Updating theme to:", themeId);
         if (!themeId) {
             return res.status(400).json({ message: "Theme ID is required" });
         }

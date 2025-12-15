@@ -58,7 +58,8 @@ class FundController {
             const { getIO } = require("../socket");
             try {
                 const io = getIO();
-                io.emit("fund:updated");
+                io.emit("fund:updated"); // Refresh list
+                io.emit("fund:transaction_added", tx); // Trigger overlay
             } catch (e) { console.log("Socket not ready"); }
 
             res.status(201).send(tx);
