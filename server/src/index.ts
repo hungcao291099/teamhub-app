@@ -4,7 +4,7 @@ import cors from "cors"
 import { AppDataSource } from "./data-source"
 import authRoutes from "./routes/auth";
 import eventRoutes from "./routes/events";
-import invitationRoutes from "./routes/invitations";
+
 import fundRoutes from "./routes/funds";
 import dutyRoutes from "./routes/duty";
 // Beer routes removed
@@ -30,7 +30,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
 app.use("/auth", authRoutes);
 app.use("/events", eventRoutes);
-app.use("/invitations", invitationRoutes);
+
 app.use("/funds", fundRoutes);
 app.use("/duty", dutyRoutes);
 app.use("/users", userRoutes);

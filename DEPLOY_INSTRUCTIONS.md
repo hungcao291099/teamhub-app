@@ -36,14 +36,17 @@ Follow these steps to deploy the TeamHub application on a fresh Ubuntu server.
     ```
 
 3.  **Start Services**:
-    Run Docker Compose to build and start the containers.
     ```bash
-    docker-compose up -d --build
+    # We recommend using Docker Compose V2 (space instead of hyphen)
+    docker compose up -d --build
+    
+    # If that command fails, try installing the plugin:
+    # sudo apt install docker-compose-plugin
     ```
 
 4.  **Verify Deployment**:
-    -   Check status: `docker-compose ps`
-    -   View logs: `docker-compose logs -f`
+    -   Check status: `docker compose ps`
+    -   View logs: `docker compose logs -f`
     -   Access the app: Open your browser and go to `http://<your-server-ip>`.
 
 ## Applying Updates (Important!)
@@ -57,8 +60,8 @@ When you pull new code, especially after the **Database Persistence Update**:
 2.  **Rebuild and Restart**:
     Since we changed `Dockerfile`, `.dockerignore`, and volume configurations, you **MUST** rebuild:
     ```bash
-    docker-compose down
-    docker-compose up -d --build
+    docker compose down
+    docker compose up -d --build
     ```
 
 3.  **Verify Data Persistence**:
