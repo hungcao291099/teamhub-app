@@ -1,30 +1,61 @@
-
 name: Deploy to Production
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
   deploy:
-    # Use 'self-hosted' to run directly on your local Ubuntu server
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Deploy with Docker Compose
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Dependencies - Client
+        run: npm ci
+
+      - name: Install Dependencies - Server
+        run: cd server && npm ci
+
+      - name: Build Client
+        run: npm run build
+
+      - name: Build Server
+        run: cd server && npm run build
+
+      - name: Run Database Migrations
+        run: cd server && npm run migration:run
+        env:
+          NODE_ENV: production
+
+      - name: Install PM2 globally
+        run: npm install -g pm2
+
+      - name: Create Logs Directory
+        run: mkdir -p logs
+
+      - name: Deploy with PM2
         run: |
-          # The repo is already checked out to the runner's work directory
-          
-          # Create .env from secrets (Optional, if you use secrets for env vars)
-          # echo "${{ secrets.ENV_FILE }}" > .env
-          
-          # Build and Run
-          # Since we are ON the server, we just run docker compose
-          docker compose up -d --build
-          
-          # Cleanup
-          docker image prune -f
+          # Stop existing processes if they exist
+          pm2 stop ecosystem.config.js || true
+          pm2 delete ecosystem.config.js || true
+
+          # Start server with PM2 using ecosystem config
+          pm2 start ecosystem.config.js
+
+          # Save PM2 process list
+          pm2 save
+
+          # Setup PM2 to start on system boot (run once manually if needed)
+          # pm2 startup
+
+      - name: Display PM2 Status
+        run: pm2 status
