@@ -24,7 +24,11 @@ jobs:
           
           # Build and Run
           # Since we are ON the server, we just run docker compose
-          docker compose up -d --build
+          # Build first (keep output for logs)
+          docker compose build
+          
+          # Run in background and silence output to prevent hanging
+          docker compose up -d > /dev/null 2>&1
           
           # Cleanup
           docker image prune -f
