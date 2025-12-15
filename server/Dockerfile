@@ -17,8 +17,8 @@ COPY . .
 # Build TypeScript code
 RUN npm run build
 
-# Expose port 3000
-EXPOSE 3000
+# Expose port 3001
+EXPOSE 3001
 
 # Start form dist/index.js
 CMD ["node", "dist/index.js"]

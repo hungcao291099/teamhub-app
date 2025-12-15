@@ -6,7 +6,7 @@ services:
     build: ./server
     container_name: teamhub-backend
     ports:
-      - "3000:3000"
+      - "3001:3001"
     volumes:
       - ./server/database.sqlite:/app/database.sqlite
       - ./server/public/uploads:/app/public/uploads
