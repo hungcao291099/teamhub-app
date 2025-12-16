@@ -38,6 +38,13 @@ export const LiquidButton = React.forwardRef(({
                 className
             )}
             {...props}
+            onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                e.currentTarget.style.setProperty("--x", `${x}px`);
+                e.currentTarget.style.setProperty("--y", `${y}px`);
+            }}
         >
             {/* Liquid Gradient Layer (only for primary) */}
             {isPrimary && (
@@ -57,6 +64,14 @@ export const LiquidButton = React.forwardRef(({
                     }}
                 />
             )}
+
+            {/* Mouse Follow Liquid Splash */}
+            <div
+                className="absolute inset-0 -z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                style={{
+                    background: `radial-gradient(circle at var(--x) var(--y), rgba(255,255,255,0.3) 0%, transparent 60%)`
+                }}
+            />
 
             {/* Glossy Reflection (Top edge) */}
             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-50" />

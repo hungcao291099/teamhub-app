@@ -115,19 +115,36 @@ const NavItem = React.forwardRef(({ item }, ref) => {
         <NavLink
             ref={ref}
             to={item.to}
-            className="relative flex items-center justify-center w-12 h-12 rounded-full cursor-pointer"
+            className="relative flex items-center justify-center w-12 h-12 rounded-full cursor-pointer overflow-hidden group"
+            onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                e.currentTarget.style.setProperty("--x", `${x}px`);
+                e.currentTarget.style.setProperty("--y", `${y}px`);
+            }}
         >
             {({ isActive }) => (
-                <div className="relative z-10">
-                    <Icon
-                        className={cn(
-                            "w-6 h-6 transition-all duration-300 ease-out",
-                            isActive
-                                ? "text-white drop-shadow-sm"
-                                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
-                        )}
+                <>
+                    {/* Mouse Follow Liquid Splash */}
+                    <div
+                        className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                        style={{
+                            background: `radial-gradient(circle at var(--x) var(--y), rgba(255,255,255,0.2) 0%, transparent 60%)`
+                        }}
                     />
-                </div>
+
+                    <div className="relative z-10">
+                        <Icon
+                            className={cn(
+                                "w-6 h-6 transition-all duration-300 ease-out",
+                                isActive
+                                    ? "text-white drop-shadow-sm"
+                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
+                            )}
+                        />
+                    </div>
+                </>
             )}
         </NavLink>
     );

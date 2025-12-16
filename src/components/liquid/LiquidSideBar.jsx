@@ -133,10 +133,25 @@ const SideBarItem = React.forwardRef(({ item }, ref) => {
         <NavLink
             ref={ref}
             to={item.to}
-            className="relative flex items-center space-x-3 px-4 py-3 rounded-2xl group"
+            className="relative flex items-center space-x-3 px-4 py-3 rounded-2xl group overflow-hidden"
+            onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                e.currentTarget.style.setProperty("--x", `${x}px`);
+                e.currentTarget.style.setProperty("--y", `${y}px`);
+            }}
         >
             {({ isActive }) => (
                 <>
+                    {/* Mouse Follow Liquid Splash */}
+                    <div
+                        className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                        style={{
+                            background: `radial-gradient(circle at var(--x) var(--y), rgba(255,255,255,0.15) 0%, transparent 50%)`
+                        }}
+                    />
+
                     {/* Hover effect for non-active items */}
                     {!isActive && (
                         <motion.div
