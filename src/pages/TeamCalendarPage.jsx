@@ -51,7 +51,12 @@ export function TeamCalendarPage() {
   };
 
   useEffect(() => {
-    fetchEventsData();
+    // Delay 300ms trước khi fetch để tránh giật lag khi chuyển nav nhanh
+    const timeoutId = setTimeout(() => {
+      fetchEventsData();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Real-time listener

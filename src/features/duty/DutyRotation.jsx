@@ -34,7 +34,12 @@ export function DutyRotation() {
   };
 
   useEffect(() => {
-    fetchData();
+    // Delay 300ms trước khi fetch để tránh giật lag khi chuyển nav nhanh
+    const timeoutId = setTimeout(() => {
+      fetchData();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const handleCompleteTurn = async () => {

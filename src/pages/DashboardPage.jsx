@@ -53,7 +53,13 @@ export function DashboardPage() {
         setLoadingStats(false);
       }
     };
-    fetchDashboardData();
+
+    // Delay 300ms trước khi fetch để tránh giật lag khi chuyển nav nhanh
+    const timeoutId = setTimeout(() => {
+      fetchDashboardData();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   return (

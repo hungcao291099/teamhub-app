@@ -24,7 +24,12 @@ export function UpcomingEvents() {
   };
 
   useEffect(() => {
-    fetchEvents();
+    // Delay 300ms trước khi fetch để tránh giật lag khi chuyển nav nhanh
+    const timeoutId = setTimeout(() => {
+      fetchEvents();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Real-time updates

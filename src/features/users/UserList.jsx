@@ -36,19 +36,24 @@ export function UserList() {
   useEffect(() => {
     // Chỉ fetch data NẾU user đã đăng nhập
     if (currentUser) {
-      const fetchUsers = async () => {
-        try {
-          setLoading(true);
-          const data = await getUsers();
-          setUsers(data);
-          setError(null);
-        } catch (err) {
-          setError("Không thể tải danh sách người dùng.");
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchUsers();
+      // Delay 300ms trước khi fetch để tránh giật lag khi chuyển nav nhanh
+      const timeoutId = setTimeout(() => {
+        const fetchUsers = async () => {
+          try {
+            setLoading(true);
+            const data = await getUsers();
+            setUsers(data);
+            setError(null);
+          } catch (err) {
+            setError("Không thể tải danh sách người dùng.");
+          } finally {
+            setLoading(false);
+          }
+        };
+        fetchUsers();
+      }, 300);
+
+      return () => clearTimeout(timeoutId);
     } else {
       // Nếu user logout, dọn dẹp state
       setUsers([]);
