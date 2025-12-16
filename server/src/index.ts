@@ -45,8 +45,13 @@ const httpServer = createServer(app);
 
 AppDataSource.initialize().then(async () => {
     console.log("Data Source has been initialized!")
-    await AppDataSource.runMigrations();
-
+    console.log("Running migrations...");
+    try {
+        await AppDataSource.runMigrations();
+        console.log("Migrations completed.");
+    } catch (e) {
+        console.error("Migration failed:", e);
+    }
 
     // Seed Admin User
     const userRepo = AppDataSource.getRepository(User);
