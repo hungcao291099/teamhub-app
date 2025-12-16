@@ -118,7 +118,6 @@ export const chatApi = {
         await axios.delete(`/chat/messages/${messageId}/reactions`, { data: { emoji } });
     },
 
-    // Upload file
     uploadFile: async (file: File): Promise<{
         fileUrl: string;
         fileName: string;
@@ -131,5 +130,46 @@ export const chatApi = {
             headers: { "Content-Type": "multipart/form-data" }
         });
         return response.data;
+    },
+
+    // Group management
+    getGroupInfo: async (conversationId: number): Promise<{
+        id: number;
+        name: string | null;
+        type: "direct" | "group";
+        createdAt: string;
+        participants: Array<{
+            id: number;
+            userId: number;
+            username: string;
+            name: string | null;
+            avatarUrl: string | null;
+            role: "owner" | "admin" | "member";
+            joinedAt: string;
+        }>;
+        currentUserRole: "owner" | "admin" | "member";
+    }> => {
+        const response = await axios.get(`/chat/conversations/${conversationId}/info`);
+        return response.data;
+    },
+
+    addGroupMember: async (conversationId: number, userIds: number[]): Promise<void> => {
+        await axios.post(`/chat/conversations/${conversationId}/members`, { userIds });
+    },
+
+    removeGroupMember: async (conversationId: number, userId: number): Promise<void> => {
+        await axios.delete(`/chat/conversations/${conversationId}/members/${userId}`);
+    },
+
+    updateMemberRole: async (conversationId: number, userId: number, role: "admin" | "member"): Promise<void> => {
+        await axios.patch(`/chat/conversations/${conversationId}/members/${userId}/role`, { role });
+    },
+
+    transferOwnership: async (conversationId: number, newOwnerId: number): Promise<void> => {
+        await axios.post(`/chat/conversations/${conversationId}/transfer-ownership`, { newOwnerId });
+    },
+
+    deleteGroup: async (conversationId: number): Promise<void> => {
+        await axios.delete(`/chat/conversations/${conversationId}`);
     },
 };

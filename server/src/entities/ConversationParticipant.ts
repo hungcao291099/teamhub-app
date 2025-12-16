@@ -22,6 +22,9 @@ export class ConversationParticipant {
     @Column({ default: true })
     notificationsEnabled: boolean;
 
+    @Column({ default: "member" })
+    role: "owner" | "admin" | "member";
+
     @CreateDateColumn()
     joinedAt: Date;
 

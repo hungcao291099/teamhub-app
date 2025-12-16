@@ -4,7 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageList } from "./MessageList";
-import { ArrowLeft, Image, Send, Loader2, X } from "lucide-react";
+import { GroupInfoDialog } from "./GroupInfoDialog";
+import { ArrowLeft, Image, Send, Loader2, X, Info } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
     AlertDialog,
@@ -40,7 +41,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
     const [isSending, setIsSending] = useState(false);
     const [replyTo, setReplyTo] = useState<any>(null);
     const [alertOpen, setAlertOpen] = useState(false);
-    const [alertMessage, setAlertMessage] = useState("");
+    const [alertMessage, setAlertMessage] = "");
+    const [groupInfoOpen, setGroupInfoOpen] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -219,6 +221,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
                         </p>
                     )}
                 </div>
+                {activeConversation.type === "group" && (
+                    <Button size="icon" variant="ghost" onClick={() => setGroupInfoOpen(true)}>
+                        <Info className="h-5 w-5" />
+                    </Button>
+                )}
             </div>
 
             {/* Messages */}
@@ -299,6 +306,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Group Info Dialog */}
+            {activeConversation.type === "group" && (
+                <GroupInfoDialog
+                    conversationId={activeConversationId!}
+                    open={groupInfoOpen}
+                    onOpenChange={setGroupInfoOpen}
+                    onGroupDeleted={() => {
+                        setGroupInfoOpen(false);
+                        // The ChatContext will handle removing the conversation from the list
+                        // via the socket event
+                    }}
+                />
+            )}
         </div>
     );
 };

@@ -59,6 +59,15 @@ router.post("/messages/read", chatController.markAsRead);
 router.post("/messages/:messageId/reactions", chatController.addReaction);
 router.delete("/messages/:messageId/reactions", chatController.removeReaction);
 
+// Group management
+router.get("/conversations/:conversationId/info", chatController.getGroupInfo);
+router.post("/conversations/:conversationId/members", chatController.addGroupMember);
+router.delete("/conversations/:conversationId/members/:targetUserId", chatController.removeGroupMember);
+router.patch("/conversations/:conversationId/members/:targetUserId/role", chatController.updateMemberRole);
+router.post("/conversations/:conversationId/transfer-ownership", chatController.transferOwnership);
+router.delete("/conversations/:conversationId", chatController.deleteGroup);
+
+
 // Upload
 router.post("/upload", upload.single("file"), (req, res) => {
     if (!req.file) {

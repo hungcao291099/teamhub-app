@@ -158,14 +158,22 @@ export const createGroupConversation = async (req: Request, res: Response) => {
         });
         await conversationRepo.save(conversation);
 
-        // Add creator + participants
-        const allParticipants = [userId, ...participantIds];
-        await participantRepo.save(
-            allParticipants.map(uid => participantRepo.create({
-                conversationId: conversation.id,
-                userId: uid
-            }))
-        );
+
+        // Add creator as owner + participants as members
+        const creatorParticipant = participantRepo.create({
+            conversationId: conversation.id,
+            userId: userId,
+            role: "owner"
+        });
+
+        const memberParticipants = participantIds.map((pid: number) => participantRepo.create({
+            conversationId: conversation.id,
+            userId: pid,
+            role: "member"
+        }));
+
+        await participantRepo.save([creatorParticipant, ...memberParticipants]);
+
 
         // Emit to all participants
         const io = getIO();
@@ -519,5 +527,358 @@ export const removeReaction = async (req: Request, res: Response) => {
     } catch (error) {
         console.error("Error removing reaction:", error);
         res.status(500).json({ error: "Failed to remove reaction" });
+    }
+};
+
+// Get group info with participants and their roles
+export const getGroupInfo = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).userId;
+        const { conversationId } = req.params;
+
+        // Verify user is a participant
+        const userParticipant = await participantRepo.findOne({
+            where: { conversationId: parseInt(conversationId), userId }
+        });
+
+        if (!userParticipant) {
+            return res.status(403).json({ error: "Not authorized" });
+        }
+
+        // Get conversation with all participants
+        const conversation = await conversationRepo.findOne({
+            where: { id: parseInt(conversationId) },
+            relations: ["participants", "participants.user"]
+        });
+
+        if (!conversation || conversation.type !== "group") {
+            return res.status(404).json({ error: "Group not found" });
+        }
+
+        const participants = conversation.participants.map(p => ({
+            id: p.id,
+            userId: p.user.id,
+            username: p.user.username,
+            name: p.user.name,
+            avatarUrl: p.user.avatarUrl,
+            role: p.role,
+            joinedAt: p.joinedAt
+        }));
+
+        res.json({
+            id: conversation.id,
+            name: conversation.name,
+            type: conversation.type,
+            createdAt: conversation.createdAt,
+            participants,
+            currentUserRole: userParticipant.role
+        });
+    } catch (error) {
+        console.error("Error getting group info:", error);
+        res.status(500).json({ error: "Failed to get group info" });
+    }
+};
+
+// Add member to group (admin or owner only)
+export const addGroupMember = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).userId;
+        const { conversationId } = req.params;
+        const { userIds } = req.body;
+
+        if (!userIds || userIds.length === 0) {
+            return res.status(400).json({ error: "userIds is required" });
+        }
+
+        // Verify requester is admin or owner
+        const requester = await participantRepo.findOne({
+            where: { conversationId: parseInt(conversationId), userId }
+        });
+
+        if (!requester || (requester.role !== "admin" && requester.role !== "owner")) {
+            return res.status(403).json({ error: "Only admins and owners can add members" });
+        }
+
+        // Check if users are already participants
+        const existingParticipants = await participantRepo.find({
+            where: {
+                conversationId: parseInt(conversationId),
+                userId: In(userIds)
+            }
+        });
+
+        const existingUserIds = existingParticipants.map(p => p.userId);
+        const newUserIds = userIds.filter((id: number) => !existingUserIds.includes(id));
+
+        if (newUserIds.length === 0) {
+            return res.status(400).json({ error: "All users are already members" });
+        }
+
+        // Add new participants
+        const newParticipants = newUserIds.map((uid: number) => participantRepo.create({
+            conversationId: parseInt(conversationId),
+            userId: uid,
+            role: "member"
+        }));
+
+        await participantRepo.save(newParticipants);
+
+        // Get user details for response
+        const users = await userRepo.find({
+            where: { id: In(newUserIds) }
+        });
+
+        // Emit to all participants including new ones
+        const io = getIO();
+        const allParticipants = await participantRepo.find({
+            where: { conversationId: parseInt(conversationId) }
+        });
+
+        const memberData = users.map(user => ({
+            userId: user.id,
+            username: user.username,
+            name: user.name,
+            avatarUrl: user.avatarUrl,
+            role: "member"
+        }));
+
+        allParticipants.forEach(p => {
+            io.to(`user_${p.userId}_web`).emit("chat:member_added", {
+                conversationId: parseInt(conversationId),
+                members: memberData,
+                addedBy: userId
+            });
+        });
+
+        res.json({ success: true, members: memberData });
+    } catch (error) {
+        console.error("Error adding group member:", error);
+        res.status(500).json({ error: "Failed to add member" });
+    }
+};
+
+// Remove member from group (admin or owner only)
+export const removeGroupMember = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).userId;
+        const { conversationId, targetUserId } = req.params;
+
+        // Verify requester is admin or owner
+        const requester = await participantRepo.findOne({
+            where: { conversationId: parseInt(conversationId), userId }
+        });
+
+        if (!requester || (requester.role !== "admin" && requester.role !== "owner")) {
+            return res.status(403).json({ error: "Only admins and owners can remove members" });
+        }
+
+        // Get target participant
+        const targetParticipant = await participantRepo.findOne({
+            where: { conversationId: parseInt(conversationId), userId: parseInt(targetUserId) }
+        });
+
+        if (!targetParticipant) {
+            return res.status(404).json({ error: "User is not a member" });
+        }
+
+        // Prevent removing the owner
+        if (targetParticipant.role === "owner") {
+            return res.status(403).json({ error: "Cannot remove the owner" });
+        }
+
+        // Admins cannot remove other admins, only owner can
+        if (requester.role === "admin" && targetParticipant.role === "admin") {
+            return res.status(403).json({ error: "Admins cannot remove other admins" });
+        }
+
+        // Remove participant
+        await participantRepo.remove(targetParticipant);
+
+        // Emit to all participants
+        const io = getIO();
+        const allParticipants = await participantRepo.find({
+            where: { conversationId: parseInt(conversationId) }
+        });
+
+        allParticipants.forEach(p => {
+            io.to(`user_${p.userId}_web`).emit("chat:member_removed", {
+                conversationId: parseInt(conversationId),
+                userId: parseInt(targetUserId),
+                removedBy: userId
+            });
+        });
+
+        // Also notify the removed user
+        io.to(`user_${targetUserId}_web`).emit("chat:member_removed", {
+            conversationId: parseInt(conversationId),
+            userId: parseInt(targetUserId),
+            removedBy: userId
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Error removing group member:", error);
+        res.status(500).json({ error: "Failed to remove member" });
+    }
+};
+
+// Update member role (owner only)
+export const updateMemberRole = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).userId;
+        const { conversationId, targetUserId } = req.params;
+        const { role } = req.body;
+
+        if (!["admin", "member"].includes(role)) {
+            return res.status(400).json({ error: "Invalid role. Must be 'admin' or 'member'" });
+        }
+
+        // Verify requester is owner
+        const requester = await participantRepo.findOne({
+            where: { conversationId: parseInt(conversationId), userId }
+        });
+
+        if (!requester || requester.role !== "owner") {
+            return res.status(403).json({ error: "Only the owner can update member roles" });
+        }
+
+        // Get target participant
+        const targetParticipant = await participantRepo.findOne({
+            where: { conversationId: parseInt(conversationId), userId: parseInt(targetUserId) }
+        });
+
+        if (!targetParticipant) {
+            return res.status(404).json({ error: "User is not a member" });
+        }
+
+        // Prevent changing owner role (use transfer ownership instead)
+        if (targetParticipant.role === "owner") {
+            return res.status(403).json({ error: "Cannot change owner role. Use transfer ownership instead" });
+        }
+
+        // Update role
+        targetParticipant.role = role as "admin" | "member";
+        await participantRepo.save(targetParticipant);
+
+        // Emit to all participants
+        const io = getIO();
+        const allParticipants = await participantRepo.find({
+            where: { conversationId: parseInt(conversationId) }
+        });
+
+        allParticipants.forEach(p => {
+            io.to(`user_${p.userId}_web`).emit("chat:role_updated", {
+                conversationId: parseInt(conversationId),
+                userId: parseInt(targetUserId),
+                role,
+                updatedBy: userId
+            });
+        });
+
+        res.json({ success: true, role });
+    } catch (error) {
+        console.error("Error updating member role:", error);
+        res.status(500).json({ error: "Failed to update role" });
+    }
+};
+
+// Transfer ownership (owner only)
+export const transferOwnership = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).userId;
+        const { conversationId } = req.params;
+        const { newOwnerId } = req.body;
+
+        if (!newOwnerId) {
+            return res.status(400).json({ error: "newOwnerId is required" });
+        }
+
+        // Verify requester is current owner
+        const currentOwner = await participantRepo.findOne({
+            where: { conversationId: parseInt(conversationId), userId }
+        });
+
+        if (!currentOwner || currentOwner.role !== "owner") {
+            return res.status(403).json({ error: "Only the owner can transfer ownership" });
+        }
+
+        // Get new owner participant
+        const newOwner = await participantRepo.findOne({
+            where: { conversationId: parseInt(conversationId), userId: newOwnerId }
+        });
+
+        if (!newOwner) {
+            return res.status(404).json({ error: "Target user is not a member" });
+        }
+
+        // Update roles
+        currentOwner.role = "admin";
+        newOwner.role = "owner";
+
+        await participantRepo.save([currentOwner, newOwner]);
+
+        // Emit to all participants
+        const io = getIO();
+        const allParticipants = await participantRepo.find({
+            where: { conversationId: parseInt(conversationId) }
+        });
+
+        allParticipants.forEach(p => {
+            io.to(`user_${p.userId}_web`).emit("chat:ownership_transferred", {
+                conversationId: parseInt(conversationId),
+                oldOwnerId: userId,
+                newOwnerId
+            });
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Error transferring ownership:", error);
+        res.status(500).json({ error: "Failed to transfer ownership" });
+    }
+};
+
+// Delete group (owner only)
+export const deleteGroup = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).userId;
+        const { conversationId } = req.params;
+
+        // Verify requester is owner
+        const requester = await participantRepo.findOne({
+            where: { conversationId: parseInt(conversationId), userId }
+        });
+
+        if (!requester || requester.role !== "owner") {
+            return res.status(403).json({ error: "Only the owner can delete the group" });
+        }
+
+        // Get all participants for notification
+        const allParticipants = await participantRepo.find({
+            where: { conversationId: parseInt(conversationId) }
+        });
+
+        // Emit deletion event before deleting
+        const io = getIO();
+        allParticipants.forEach(p => {
+            io.to(`user_${p.userId}_web`).emit("chat:group_deleted", {
+                conversationId: parseInt(conversationId),
+                deletedBy: userId
+            });
+        });
+
+        // Delete all messages (reactions will be cascade deleted)
+        await messageRepo.delete({ conversationId: parseInt(conversationId) });
+
+        // Delete all participants
+        await participantRepo.delete({ conversationId: parseInt(conversationId) });
+
+        // Delete conversation
+        await conversationRepo.delete(parseInt(conversationId));
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Error deleting group:", error);
+        res.status(500).json({ error: "Failed to delete group" });
     }
 };

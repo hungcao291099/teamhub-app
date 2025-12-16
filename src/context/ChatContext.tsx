@@ -170,6 +170,43 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             refreshConversations();
         });
 
+        // Group management events
+        newSocket.on("chat:member_added", ({ conversationId }: { conversationId: number }) => {
+            console.log(`Member added to conversation ${conversationId}`);
+            refreshConversations();
+        });
+
+        newSocket.on("chat:member_removed", ({ conversationId, userId }: { conversationId: number; userId: number }) => {
+            console.log(`Member ${userId} removed from conversation ${conversationId}`);
+            // If current user was removed, clear active conversation if it matches
+            if (userId === user?.id && activeConversationRef.current === conversationId) {
+                setActiveConversationId(null);
+                setMessages([]);
+            }
+            refreshConversations();
+        });
+
+        newSocket.on("chat:role_updated", ({ conversationId }: { conversationId: number }) => {
+            console.log(`Role updated in conversation ${conversationId}`);
+            refreshConversations();
+        });
+
+        newSocket.on("chat:ownership_transferred", ({ conversationId }: { conversationId: number }) => {
+            console.log(`Ownership transferred in conversation ${conversationId}`);
+            refreshConversations();
+        });
+
+        newSocket.on("chat:group_deleted", ({ conversationId }: { conversationId: number }) => {
+            console.log(`Group ${conversationId} was deleted`);
+            // Clear active conversation if it was deleted
+            if (activeConversationRef.current === conversationId) {
+                setActiveConversationId(null);
+                setMessages([]);
+            }
+            refreshConversations();
+        });
+
+
         setSocket(newSocket);
 
         return () => {
