@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { MessageSquare } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LiquidSideBarItem } from "@/components/liquid/LiquidSideBar";
 import { useChat } from "@/context/ChatContext";
 import { ChatDialog } from "./ChatDialog";
 
@@ -28,28 +28,24 @@ export const ChatButton: React.FC = () => {
 
     return (
         <>
-            <Button
-                variant="ghost"
+            <LiquidSideBarItem
+                item={{ icon: MessageSquare, label: "Tin nhắn" }}
                 onClick={() => setIsOpen(true)}
-                className={`w-full justify-start text-muted-foreground hover:text-blue-600 hover:bg-blue-600/10 hover:shadow-none border-0 relative ${showRipple ? "animate-pulse" : ""
-                    }`}
+                className={showRipple ? "animate-pulse" : ""}
             >
-                <div className="relative">
-                    <MessageSquare className="h-5 w-5 mr-3" />
-                    {showRipple && (
-                        <>
-                            <span className="absolute inset-0 rounded-full bg-blue-500 opacity-75 animate-ping"></span>
-                            <span className="absolute inset-0 rounded-full bg-blue-500 opacity-50 animate-ping animation-delay-300"></span>
-                        </>
-                    )}
-                </div>
-                <span>Tin nhắn</span>
+                {showRipple && (
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none">
+                        <span className="absolute inset-0 rounded-full bg-blue-500 opacity-75 animate-ping"></span>
+                        <span className="absolute inset-0 rounded-full bg-blue-500 opacity-50 animate-ping animation-delay-300"></span>
+                    </div>
+                )}
+
                 {unreadTotal > 0 && (
-                    <span className="absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-bounce">
+                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-bounce">
                         {unreadTotal > 99 ? "99+" : unreadTotal}
                     </span>
                 )}
-            </Button>
+            </LiquidSideBarItem>
 
             <ChatDialog open={isOpen} onOpenChange={setIsOpen} />
         </>

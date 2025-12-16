@@ -21,10 +21,7 @@ const app = express()
 const port = 3001
 
 // Config CORS
-app.use(cors({
-    origin: ["http://localhost:5173", "https://itteamhub.netlify.app"],
-    credentials: true
-}));
+app.use(cors());
 
 app.use(express.json())
 // Serve static files from 'public' directory

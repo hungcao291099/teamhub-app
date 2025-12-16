@@ -33,10 +33,18 @@ export const LiquidButton = React.forwardRef(({
                 "backdrop-blur-xl border border-white/20 shadow-lg",
                 // Variants
                 isPrimary
-                    ? "bg-white/10 text-white hover:bg-white/20 hover:shadow-primary/30"
+                    ? "bg-transparent text-primary"
                     : "bg-transparent text-foreground hover:bg-white/5",
                 className
             )}
+            style={{
+                background: isPrimary
+                    ? "linear-gradient(180deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%)"
+                    : "linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%)",
+                boxShadow: isPrimary
+                    ? "inset 0 1px 1px 0 rgba(255, 255, 255, 0.2), inset 0 -2px 5px 0 rgba(0, 0, 0, 0.05), 0 4px 20px rgba(99, 102, 241, 0.15)"
+                    : "inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), inset 0 -2px 5px 0 rgba(0, 0, 0, 0.05), 0 4px 15px rgba(0, 0, 0, 0.05)"
+            }}
             {...props}
             onMouseMove={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -46,30 +54,16 @@ export const LiquidButton = React.forwardRef(({
                 e.currentTarget.style.setProperty("--y", `${y}px`);
             }}
         >
-            {/* Liquid Gradient Layer (only for primary) */}
-            {isPrimary && (
-                <motion.div
-                    className="absolute inset-0 -z-10 opacity-70 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{
-                        background: "linear-gradient(45deg, #3b82f6, #8b5cf6, #3b82f6)",
-                        backgroundSize: "200% 200%",
-                    }}
-                    animate={{
-                        backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-                    }}
-                    transition={{
-                        duration: 3,
-                        ease: "linear",
-                        repeat: Infinity,
-                    }}
-                />
-            )}
-
-            {/* Mouse Follow Liquid Splash */}
+            {/* Mouse Follow Glow Border */}
             <div
-                className="absolute inset-0 -z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl"
                 style={{
-                    background: `radial-gradient(circle at var(--x) var(--y), rgba(255,255,255,0.3) 0%, transparent 60%)`
+                    background: `radial-gradient(circle at var(--x) var(--y), ${isPrimary ? "rgba(99, 102, 241, 0.6)" : "rgba(255, 255, 255, 0.3)"} 0%, transparent 50%)`,
+                    mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                    maskComposite: "exclude",
+                    WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                    WebkitMaskComposite: "xor",
+                    padding: "2px",
                 }}
             />
 

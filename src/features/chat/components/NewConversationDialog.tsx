@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useChat } from "@/context/ChatContext";
+import { useAuth } from "@/context/AuthContext";
 import axios from "@/services/api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Users as UsersIcon } from "lucide-react";
@@ -26,6 +27,7 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ op
     const [groupName, setGroupName] = useState("");
     const [isCreating, setIsCreating] = useState(false);
     const { createConversation, createGroupConversation, setActiveConversation } = useChat();
+    const { onlineUsers } = useAuth();
 
     useEffect(() => {
         if (open) {
@@ -133,8 +135,11 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ op
                                     className={`w-full p-3 flex items-center gap-3 hover:bg-accent transition-colors ${selectedUsers.includes(user.id) ? "bg-accent" : ""
                                         }`}
                                 >
-                                    <Avatar className="h-8 w-8">
+                                    <Avatar className="h-8 w-8 relative">
                                         <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                                        {onlineUsers.includes(user.id) && (
+                                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-background rounded-full" />
+                                        )}
                                     </Avatar>
                                     <div className="text-left">
                                         <div className="font-medium">{user.username}</div>

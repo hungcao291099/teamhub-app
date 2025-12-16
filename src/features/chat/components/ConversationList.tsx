@@ -1,5 +1,6 @@
 import React from "react";
 import { useChat } from "@/context/ChatContext";
+import { useAuth } from "@/context/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -7,6 +8,7 @@ import { Users } from "lucide-react";
 
 export const ConversationList: React.FC = () => {
     const { conversations, activeConversationId, setActiveConversation } = useChat();
+    const { onlineUsers } = useAuth();
 
     if (conversations.length === 0) {
         return (
@@ -25,6 +27,9 @@ export const ConversationList: React.FC = () => {
                     : (conv.participants[0]?.username || "Unknown");
                 const avatarText = displayName.charAt(0).toUpperCase();
 
+                const otherUser = conv.type === "direct" ? conv.participants[0] : null;
+                const isOnline = otherUser ? onlineUsers.includes(otherUser.id) : false;
+
                 return (
                     <button
                         key={conv.id}
@@ -32,10 +37,13 @@ export const ConversationList: React.FC = () => {
                         className={`w-full p-3 flex items-start gap-3 hover:bg-accent transition-colors ${isActive ? "bg-accent" : ""
                             }`}
                     >
-                        <Avatar>
+                        <Avatar className="relative">
                             <AvatarFallback>
                                 {conv.type === "group" ? <Users className="h-4 w-4" /> : avatarText}
                             </AvatarFallback>
+                            {isOnline && (
+                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full" />
+                            )}
                         </Avatar>
 
                         <div className="flex-1 text-left min-w-0">
@@ -50,8 +58,8 @@ export const ConversationList: React.FC = () => {
                             </div>
                             {conv.lastMessage && (
                                 <p className={`text-sm truncate ${conv.unreadCount > 0
-                                        ? "font-semibold text-foreground"
-                                        : "text-muted-foreground"
+                                    ? "font-semibold text-foreground"
+                                    : "text-muted-foreground"
                                     }`}>
                                     {conv.lastMessage.type === "image" ? "Đã gửi hình ảnh" : conv.lastMessage.content}
                                 </p>

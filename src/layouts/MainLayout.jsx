@@ -22,7 +22,7 @@ import {
 
 import { PageTransition } from "@/components/common/PageTransition"; // Import PageTransition
 import { LiquidNavBar } from "@/components/liquid/LiquidNavBar";
-import { LiquidSideBar } from "@/components/liquid/LiquidSideBar";
+import { LiquidSideBar, LiquidSideBarItem } from "@/components/liquid/LiquidSideBar";
 import { ChatButton } from "@/features/chat/components/ChatButton";
 
 // Danh sách các link nav (đã xóa Xoay tua)
@@ -66,15 +66,14 @@ export function MainLayout() {
           footer={
             <div className="space-y-4">
               <ChatButton />
-              <DesktopNavLink
-                to="/account"
-                label="Tài khoản của tôi"
-                icon={UserCircle}
+              <LiquidSideBarItem
+                item={{ to: "/account", label: "Tài khoản của tôi", icon: UserCircle }}
               />
-              <Button variant="ghost" onClick={handleLogout} className="w-full justify-start text-muted-foreground hover:text-red-500 hover:bg-red-500/10 hover:shadow-none border-0">
-                <LogOut className="h-5 w-5 mr-3" />
-                <span>Đăng xuất</span>
-              </Button>
+              <LiquidSideBarItem
+                item={{ label: "Đăng xuất", icon: LogOut }}
+                onClick={handleLogout}
+                className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+              />
             </div>
           }
         />

@@ -9,7 +9,7 @@ const buttonVariants = cva(
     {
         variants: {
             variant: {
-                default: "liquid-button text-white border-0",
+                default: "liquid-button text-primary border-0",
                 destructive:
                     "bg-destructive text-destructive-foreground hover:bg-destructive/90",
                 outline:
@@ -42,10 +42,22 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ({ className, variant, size, asChild = false, ...props }, ref) => {
         const Comp = asChild ? Slot : "button"
+        const isPrimary = variant === "default" || (!variant && true);
+        const isSecondary = variant === "secondary" || variant === "outline";
+
+        const liquidStyle = isPrimary ? {
+            background: "linear-gradient(180deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%)",
+            boxShadow: "inset 0 1px 1px 0 rgba(255, 255, 255, 0.2), inset 0 -2px 5px 0 rgba(0, 0, 0, 0.05), 0 4px 20px rgba(99, 102, 241, 0.15)"
+        } : (isSecondary ? {
+            background: "linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%)",
+            boxShadow: "inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), inset 0 -2px 5px 0 rgba(0, 0, 0, 0.05), 0 4px 15px rgba(0, 0, 0, 0.05)"
+        } : {});
+
         return (
             <Comp
                 className={cn(buttonVariants({ variant, size, className }))}
                 ref={ref}
+                style={liquidStyle}
                 {...props}
             />
         )

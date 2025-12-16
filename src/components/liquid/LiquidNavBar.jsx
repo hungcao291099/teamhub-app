@@ -47,16 +47,12 @@ export const LiquidNavBar = ({ items = [] }) => {
                 <AnimatePresence>
                     {activeRect && (
                         <motion.div
-                            className="absolute rounded-full pointer-events-none"
+                            className="absolute rounded-2xl pointer-events-none"
                             style={{
                                 width: activeRect.width,
                                 height: activeRect.height,
-                                background: "linear-gradient(145deg, rgba(99, 102, 241, 0.95) 0%, rgba(139, 92, 246, 0.98) 100%)",
-                                boxShadow: `
-                                    0 8px 24px rgba(99, 102, 241, 0.4),
-                                    0 2px 8px rgba(0, 0, 0, 0.15),
-                                    inset 0 1px 0 rgba(255, 255, 255, 0.3)
-                                `
+                                background: "linear-gradient(180deg, rgba(99, 102, 241, 0.4) 0%, rgba(99, 102, 241, 0) 100%)",
+                                boxShadow: "inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), inset 0 -2px 5px 0 rgba(0, 0, 0, 0.05), 0 0 25px rgba(99, 102, 241, 0.4), 0 10px 15px -3px rgba(0, 0, 0, 0.1)"
                             }}
                             initial={false}
                             animate={{
@@ -69,28 +65,13 @@ export const LiquidNavBar = ({ items = [] }) => {
                                 mass: 1.0
                             }}
                         >
-                            {/* Inner glow */}
+                            {/* Inner glow for glass depth */}
                             <div
-                                className="absolute inset-0 rounded-full"
+                                className="absolute inset-0 rounded-2xl"
                                 style={{
-                                    background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.25) 0%, transparent 50%)"
+                                    background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.22) 0%, transparent 50%)"
                                 }}
                             />
-
-                            {/* Subtle shine sweep */}
-                            <motion.div className="absolute inset-0 rounded-full overflow-hidden">
-                                <motion.div
-                                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                                    initial={{ x: "-150%" }}
-                                    animate={{ x: "250%" }}
-                                    transition={{
-                                        duration: 2.5,
-                                        repeat: Infinity,
-                                        repeatDelay: 5,
-                                        ease: [0.25, 0.1, 0.25, 1]
-                                    }}
-                                />
-                            </motion.div>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -115,7 +96,7 @@ const NavItem = React.forwardRef(({ item }, ref) => {
         <NavLink
             ref={ref}
             to={item.to}
-            className="relative flex items-center justify-center w-12 h-12 rounded-full cursor-pointer overflow-hidden group"
+            className="relative flex items-center justify-center w-12 h-12 rounded-2xl cursor-pointer overflow-hidden group"
             onMouseMove={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
@@ -126,11 +107,16 @@ const NavItem = React.forwardRef(({ item }, ref) => {
         >
             {({ isActive }) => (
                 <>
-                    {/* Mouse Follow Liquid Splash */}
+                    {/* Mouse Follow Glow Border */}
                     <div
                         className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
                         style={{
-                            background: `radial-gradient(circle at var(--x) var(--y), rgba(255,255,255,0.2) 0%, transparent 60%)`
+                            background: `radial-gradient(circle at var(--x) var(--y), rgba(99, 102, 241, 0.6) 0%, transparent 50%)`,
+                            mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                            maskComposite: "exclude",
+                            WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                            WebkitMaskComposite: "xor",
+                            padding: "2px",
                         }}
                     />
 
@@ -139,8 +125,8 @@ const NavItem = React.forwardRef(({ item }, ref) => {
                             className={cn(
                                 "w-6 h-6 transition-all duration-300 ease-out",
                                 isActive
-                                    ? "text-white drop-shadow-sm"
-                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
+                                    ? "text-indigo-600 dark:text-indigo-400 drop-shadow-sm"
+                                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                             )}
                         />
                     </div>

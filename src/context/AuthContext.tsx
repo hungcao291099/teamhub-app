@@ -14,6 +14,7 @@ interface AuthContextType {
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  onlineUsers: number[];
   socket: Socket | null;
   // signup removed as user requested admin only
 }
@@ -30,6 +31,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<number[]>([]);
 
   // Helper to init socket - socket.io auto-connects to current domain
   const connectSocket = (token: string) => {
@@ -46,6 +48,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.warn("Forced logout:", data.reason);
       logout();
       alert("Bạn đã bị đăng xuất (" + data.reason + ")");
+    });
+
+    newSocket.on("users:online", (users: number[]) => {
+      console.log("Online users updated:", users);
+      setOnlineUsers(users);
     });
 
     newSocket.on("user:updated", (data) => {
@@ -96,6 +103,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       socket.disconnect();
       setSocket(null);
     }
+    setOnlineUsers([]);
     window.location.href = "/login";
   };
 
@@ -104,7 +112,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loading,
     login,
     logout,
-    socket // Expose socket
+    socket, // Expose socket
+    onlineUsers
   };
 
   return (

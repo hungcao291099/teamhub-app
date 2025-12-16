@@ -8,40 +8,40 @@ export function DonateOverlay() {
     const { socket } = useAuth();
     const [notification, setNotification] = useState(null);
 
+    const handleTransactionAdded = (tx) => {
+        // Only show for "thu" (income) transactions
+        if (tx.type === 'thu') {
+            setNotification(tx);
+
+            // Trigger Fireworks
+            const duration = 5 * 1000;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+            const randomInRange = (min, max) => Math.random() * (max - min) + min;
+
+            const interval = setInterval(function () {
+                const timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) {
+                    return clearInterval(interval);
+                }
+
+                const particleCount = 50 * (timeLeft / duration);
+                confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+                confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+            }, 250);
+
+            // Auto hide after 10 seconds
+            setTimeout(() => {
+                setNotification(null);
+                clearInterval(interval);
+            }, 10000);
+        }
+    };
+
     useEffect(() => {
         if (!socket) return;
-
-        const handleTransactionAdded = (tx) => {
-            // Only show for "thu" (income) transactions
-            if (tx.type === 'thu') {
-                setNotification(tx);
-
-                // Trigger Fireworks
-                const duration = 5 * 1000;
-                const animationEnd = Date.now() + duration;
-                const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
-
-                const randomInRange = (min, max) => Math.random() * (max - min) + min;
-
-                const interval = setInterval(function () {
-                    const timeLeft = animationEnd - Date.now();
-
-                    if (timeLeft <= 0) {
-                        return clearInterval(interval);
-                    }
-
-                    const particleCount = 50 * (timeLeft / duration);
-                    confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
-                    confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
-                }, 250);
-
-                // Auto hide after 10 seconds
-                setTimeout(() => {
-                    setNotification(null);
-                    clearInterval(interval);
-                }, 10000);
-            }
-        };
 
         socket.on('fund:transaction_added', handleTransactionAdded);
 
