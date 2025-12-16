@@ -158,3 +158,100 @@ teamhub-app/
     ├── database.sqlite (File!)
     └── ...
 ```
+
+---
+
+## 2. Manual Deployment with PM2 (Full Stack)
+
+This method allows you to run the application directly on the server without Docker.
+**Note**: The Backend server is configured (`server/src/index.ts`) to serve the Frontend static files automatically. You do not need to run a separate process for the frontend.
+
+### Prerequisites
+
+1.  **Install Node.js (v20.x LTS)**:
+    ```bash
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    ```
+
+2.  **Install PM2 globally**:
+    ```bash
+    sudo npm install -g pm2
+    ```
+
+### Initial Setup
+
+1.  **Clone Source Code**:
+    ```bash
+    git clone <your-repo-url> teamhub-app
+    cd teamhub-app
+    ```
+
+2.  **Install Dependencies**:
+    ```bash
+    # 1. Install Frontend/Root dependencies
+    npm install
+    
+    # 2. Install Backend dependencies
+    cd server
+    npm install
+    cd ..
+    ```
+
+3.  **Build Full Stack**:
+    You must build both the frontend and the backend.
+    ```bash
+    # This command builds the Vite frontend (to /dist) 
+    # AND checks/builds the backend if configured. To be absolutely sure:
+    
+    # 1. Build Frontend (React -> HTML/JS/CSS in /dist)
+    npm run build
+    
+    # 2. Build Backend (TypeScript -> JavaScript in /server/dist)
+    npm run build --prefix server
+    ```
+
+4.  **Start Application (IMPORTANT)**:
+    We must start PM2 from the `server` directory so it uses the correct `database.sqlite` file.
+    ```bash
+    # Start PM2 from the 'server' directory
+    # This ensures consistency with development and prevents creating a new empty DB in root
+    pm2 start dist/index.js --name "teamhub-server" --cwd ./server
+    ```
+
+5.  **Save for Auto-Restart**:
+    ```bash
+    pm2 save
+    pm2 startup
+    # Follow the command output from pm2 startup
+    ```
+
+### Daily Operations (How to Update)
+
+When you need to update the application on the server (e.g., after pushing code):
+
+1.  **Pull Latest Code**:
+    ```bash
+    git pull
+    ```
+
+2.  **Install Dependencies (if changed)**:
+    ```bash
+    npm install
+    npm install --prefix server
+    ```
+
+3.  **Rebuild Everything**:
+    **CRITICAL**: You MUST rebuild after pulling code, otherwise the server will run the OLD code.
+    ```bash
+    # Build React Frontend
+    npm run build
+    
+    # Build Express Backend
+    npm run build --prefix server
+    ```
+
+4.  **Restart**:
+    ```bash
+    pm2 restart teamhub-server
+    ```
