@@ -65,7 +65,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [activeConversationId]);
 
     // Calculate total unread
-    const unreadTotal = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+    const unreadTotal = Array.isArray(conversations)
+        ? conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0)
+        : 0;
 
     // Initialize socket connection
     useEffect(() => {
@@ -90,7 +92,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // Add to messages if in active conversation (use ref to avoid stale closure)
             if (message.conversationId === activeConversationRef.current) {
-                setMessages(prev => [...prev, message]);
+                // Ensure messages is an array before spreading
+                setMessages(prev => Array.isArray(prev) ? [...prev, message] : [message]);
             }
 
             // Update conversation list
@@ -98,19 +101,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         newSocket.on("chat:message_edited", ({ messageId, content }: { messageId: number; content: string }) => {
-            setMessages(prev => prev.map(msg =>
+            setMessages(prev => Array.isArray(prev) ? prev.map(msg =>
                 msg.id === messageId ? { ...msg, content, isEdited: true } : msg
-            ));
+            ) : []);
         });
 
         newSocket.on("chat:message_deleted", ({ messageId }: { messageId: number }) => {
-            setMessages(prev => prev.map(msg =>
+            setMessages(prev => Array.isArray(prev) ? prev.map(msg =>
                 msg.id === messageId ? { ...msg, content: "Tin nhắn đã bị xóa", isDeleted: true } : msg
-            ));
+            ) : []);
         });
 
         newSocket.on("chat:reaction", ({ messageId, reaction }: { messageId: number; reaction: any }) => {
-            setMessages(prev => prev.map(msg => {
+            setMessages(prev => Array.isArray(prev) ? prev.map(msg => {
                 if (msg.id === messageId) {
                     // Check if there's already a reaction with same emoji from same user (temp optimistic one)
                     const existingIndex = msg.reactions.findIndex(
@@ -128,13 +131,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                 }
                 return msg;
-            }));
+            }) : []);
         });
 
         newSocket.on("chat:reaction_removed", ({ messageId, reactionId }: { messageId: number; reactionId: number }) => {
-            setMessages(prev => prev.map(msg =>
+            setMessages(prev => Array.isArray(prev) ? prev.map(msg =>
                 msg.id === messageId ? { ...msg, reactions: msg.reactions.filter(r => r.id !== reactionId) } : msg
-            ));
+            ) : []);
         });
 
         newSocket.on("chat:typing_start", ({ userId, username, conversationId }: { userId: number; username: string; conversationId: number }) => {
@@ -196,9 +199,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const refreshConversations = useCallback(async () => {
         try {
             const data = await chatApi.getConversations();
-            setConversations(data);
+            if (Array.isArray(data)) {
+                setConversations(data);
+            } else {
+                console.error("Invalid conversations data received:", data);
+                setConversations([]);
+            }
         } catch (error) {
             console.error("Error loading conversations:", error);
+            // Don't set to empty array on error to keep potential stale data or avoiding flash
         }
     }, []);
 
