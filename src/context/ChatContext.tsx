@@ -73,9 +73,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         if (!token || !user) return;
 
-        const newSocket = io({
+        const socketUrl = import.meta.env.VITE_API_URL || window.location.origin;
+        const newSocket = io(socketUrl, {
             auth: { token },
-            query: { clientType: "web" }
+            query: { clientType: "web" },
+            path: "/socket.io",
+            transports: ["websocket", "polling"]
         });
 
         newSocket.on("connect", () => {

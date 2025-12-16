@@ -94,7 +94,7 @@ export function AddUserDialog({ open, onOpenChange, onUserCreated }) {
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
                             Hủy
                         </Button>
                         <Button type="submit" disabled={loading}>

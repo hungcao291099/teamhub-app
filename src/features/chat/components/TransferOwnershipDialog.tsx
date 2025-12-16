@@ -94,10 +94,11 @@ export const TransferOwnershipDialog: React.FC<TransferOwnershipDialogProps> = (
                                 </div>
                             ) : (
                                 members.map(member => (
-                                    <button
+                                    <Button
                                         key={member.id}
+                                        variant="ghost"
                                         onClick={() => setSelectedUserId(member.userId)}
-                                        className={`w-full p-3 flex items-center gap-3 hover:bg-accent transition-colors ${selectedUserId === member.userId ? "bg-accent" : ""
+                                        className={`w-full p-3 h-auto justify-start flex items-center gap-3 hover:bg-accent transition-colors ${selectedUserId === member.userId ? "bg-accent" : ""
                                             }`}
                                     >
                                         <Avatar className="h-8 w-8 relative">
@@ -124,7 +125,7 @@ export const TransferOwnershipDialog: React.FC<TransferOwnershipDialogProps> = (
                                                 <Crown className="h-5 w-5 text-yellow-600" />
                                             )}
                                         </div>
-                                    </button>
+                                    </Button>
                                 ))
                             )}
                         </div>
@@ -133,7 +134,7 @@ export const TransferOwnershipDialog: React.FC<TransferOwnershipDialogProps> = (
                     {/* Actions */}
                     <div className="flex gap-2">
                         <Button
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => onOpenChange(false)}
                             className="flex-1"
                         >

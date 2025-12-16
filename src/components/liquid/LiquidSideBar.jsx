@@ -111,11 +111,7 @@ export const LiquidSideBar = ({
         <LiquidSideBarContext.Provider value={{ registerItem, unregisterItem }}>
             <aside className={cn("hidden md:flex flex-col w-64 h-screen py-4 pl-4 pr-2 sticky top-0 z-20", className)}>
                 {/* Glass Container */}
-                <div className="flex-1 flex flex-col bg-white/10 dark:bg-black/20 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden relative">
-
-                    {/* Decorative Liquid Blobs */}
-                    <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500/20 blur-3xl -z-10 rounded-full animate-blob" />
-                    <div className="absolute bottom-0 right-0 w-32 h-32 bg-purple-500/20 blur-3xl -z-10 rounded-full animate-blob animation-delay-2000" />
+                <div className="flex-1 flex flex-col bg-white/10 dark:bg-black/20 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden relative">
 
                     {/* Header */}
                     <div className="p-6 border-b border-white/10">
@@ -219,7 +215,7 @@ export const LiquidSideBarItem = React.forwardRef(({ item, className, onClick, c
             <div
                 className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"
                 style={{
-                    background: `radial-gradient(circle at var(--x) var(--y), rgba(255,255,255,0.6) 0%, transparent 40%)`,
+                    background: `radial-gradient(circle at var(--x) var(--y), rgba(99, 102, 241, 0.6) 0%, transparent 50%)`,
                     mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
                     maskComposite: "exclude",
                     WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",

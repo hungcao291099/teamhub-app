@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { Link } from "react-router-dom"; // Dùng để link sang Lịch
+import { useNavigate } from "react-router-dom"; // Dùng để điều hướng
 
 import { useAuth } from "@/hooks/useAuth";
 
@@ -14,6 +14,7 @@ export function UpcomingEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const { socket } = useAuth();
+  const navigate = useNavigate();
 
   const fetchEvents = () => {
     // streamEvents service đã được sửa để trả về mảng Event với Date object
@@ -48,8 +49,8 @@ export function UpcomingEvents() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Sự kiện sắp diễn ra</CardTitle>
-        <Button asChild variant="link" className="p-0">
-          <Link to="/utilities/team-calendar">Xem tất cả</Link>
+        <Button onClick={() => navigate('/utilities/team-calendar')} variant="link" className="p-0">
+          Xem tất cả
         </Button>
       </CardHeader>
       <CardContent>

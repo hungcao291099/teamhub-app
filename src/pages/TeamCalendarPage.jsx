@@ -1,7 +1,7 @@
 // src/pages/TeamCalendarPage.jsx
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Plus, MoreHorizontal } from "lucide-react";
@@ -27,6 +27,7 @@ const pageAnimation = {
 
 
 export function TeamCalendarPage() {
+  const navigate = useNavigate();
   const [allEvents, setAllEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openAddDialog, setOpenAddDialog] = useState(false);
@@ -138,11 +139,9 @@ export function TeamCalendarPage() {
   return (
     <motion.div variants={pageAnimation} initial="initial" animate="animate">
       <div className="flex justify-between items-center mb-4">
-        <Button asChild variant="outline">
-          <Link to="/utilities">
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Quay lại
-          </Link>
+        <Button variant="ghost" onClick={() => navigate("/utilities")}>
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Quay lại
         </Button>
         {isAdmin && (
           <Dialog open={openAddDialog || !!eventToEdit} onOpenChange={handleOpenStateChange}>

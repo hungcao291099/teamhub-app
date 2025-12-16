@@ -1,5 +1,5 @@
 import { DutyRotation } from "@/features/duty/DutyRotation";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { motion } from "framer-motion";
@@ -9,6 +9,7 @@ const pageAnimation = {
   exit: { opacity: 0, y: -10 },
 };
 export function DutyPage() {
+  const navigate = useNavigate();
   return (
     <motion.div
       variants={pageAnimation}
@@ -17,11 +18,9 @@ export function DutyPage() {
       exit="exit"
       transition={{ duration: 0.2 }}
     >
-      <Button asChild variant="outline" className="mb-4">
-        <Link to="/utilities">
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Quay lại
-        </Link>
+      <Button variant="ghost" className="mb-4" onClick={() => navigate("/utilities")}>
+        <ChevronLeft className="h-4 w-4 mr-2" />
+        Quay lại
       </Button>
       <DutyRotation />
     </motion.div>

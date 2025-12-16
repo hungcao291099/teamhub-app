@@ -42,12 +42,14 @@ export const MessageSearch: React.FC<MessageSearchProps> = ({ onMessageClick }) 
                             autoFocus
                         />
                         {searchQuery && (
-                            <button
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => setSearchQuery("")}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 text-muted-foreground hover:bg-transparent"
                             >
                                 <X className="h-4 w-4" />
-                            </button>
+                            </Button>
                         )}
                     </div>
                     <Button
@@ -72,20 +74,21 @@ export const MessageSearch: React.FC<MessageSearchProps> = ({ onMessageClick }) 
                         </div>
                     ) : (
                         filteredMessages.map((msg) => (
-                            <button
+                            <Button
                                 key={msg.id}
+                                variant="ghost"
                                 onClick={() => {
                                     onMessageClick?.(msg.id);
                                     setIsOpen(false);
                                     setSearchQuery("");
                                 }}
-                                className="w-full p-3 hover:bg-accent text-left border-b last:border-b-0"
+                                className="w-full p-3 h-auto justify-start flex-col items-start hover:bg-accent border-b last:border-b-0 rounded-none first:rounded-t-md last:rounded-b-md"
                             >
-                                <div className="text-xs text-muted-foreground">{msg.senderName}</div>
-                                <div className="text-sm truncate">
+                                <div className="text-xs text-muted-foreground font-normal">{msg.senderName}</div>
+                                <div className="text-sm truncate font-normal w-full text-left">
                                     {msg.content.split(new RegExp(`(${searchQuery})`, "gi")).map((part, i) =>
                                         part.toLowerCase() === searchQuery.toLowerCase() ? (
-                                            <mark key={i} className="bg-yellow-200 dark:bg-yellow-900">
+                                            <mark key={i} className="bg-yellow-200 dark:bg-yellow-900 rounded-sm">
                                                 {part}
                                             </mark>
                                         ) : (
@@ -93,7 +96,7 @@ export const MessageSearch: React.FC<MessageSearchProps> = ({ onMessageClick }) 
                                         )
                                     )}
                                 </div>
-                            </button>
+                            </Button>
                         ))
                     )}
                 </div>

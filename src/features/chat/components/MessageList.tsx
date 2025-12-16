@@ -4,10 +4,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
-import { Loader2, MoreVertical, ChevronDown } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, MoreVertical, ChevronDown, AlertTriangle } from "lucide-react";
 import { MessageContextMenu } from "./MessageContextMenu";
 import { EmojiPicker } from "./EmojiPicker";
-import { DeleteMessageDialog } from "./DeleteMessageDialog";
 import { Button } from "@/components/ui/button";
 
 // Message list component
@@ -120,6 +129,7 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
         } finally {
             setIsDeleting(false);
             setMessageToDelete(null);
+            setDeleteDialogOpen(false);
         }
     };
 
@@ -262,13 +272,15 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                                     const hasMyReaction = reactions.some((r: any) => r.userId === currentUser?.id);
                                     const myRxn = reactions.find((r: any) => r.userId === currentUser?.id);
                                     return (
-                                        <button
+                                        <Button
                                             key={emoji}
+                                            variant="ghost"
+                                            size="sm"
                                             onClick={() => handleReaction(message.id, emoji, hasMyReaction, myRxn)}
-                                            className={`text-sm px-2 py-1 rounded-full transition-colors shadow-md border ${hasMyReaction
+                                            className={`text-sm px-2 py-1 h-auto rounded-full transition-colors shadow-md border ${hasMyReaction
                                                 ? isOwn
-                                                    ? "bg-blue-600/80 text-white border-blue-700" // Own message with my reaction
-                                                    : "bg-accent/80 border-accent-foreground/20"   // Other's message with my reaction
+                                                    ? "bg-blue-600/80 text-white border-blue-700 hover:bg-blue-600/90" // Own message with my reaction
+                                                    : "bg-accent/80 border-accent-foreground/20 hover:bg-accent/90"   // Other's message with my reaction
                                                 : isOwn
                                                     ? "bg-blue-600/60 text-white/90 border-blue-700/50 hover:bg-blue-600/70" // Own message without my reaction
                                                     : "bg-accent/60 border-accent-foreground/10 hover:bg-accent/70"         // Other's message without my reaction
@@ -276,7 +288,7 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                                             title={reactions.map((r: any) => r.username).join(", ")}
                                         >
                                             {emoji} {reactions.length > 1 && reactions.length}
-                                        </button>
+                                        </Button>
                                     );
                                 })}
                             </div>
@@ -338,19 +350,40 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
             {showScrollButton && (
                 <Button
                     size="icon"
-                    className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-50 h-10 w-10"
+                    variant="default"
+                    className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 h-10 w-10"
                     onClick={scrollToBottom}
                 >
-                    <ChevronDown className="h-6 w-6 text-white" />
+                    <ChevronDown className="h-6 w-6" />
                 </Button>
             )}
 
-            <DeleteMessageDialog
-                open={deleteDialogOpen}
-                onOpenChange={setDeleteDialogOpen}
-                onConfirm={confirmDelete}
-                isDeleting={isDeleting}
-            />
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent className="max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-red-600" />
+                            Xóa tin nhắn
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Bạn có chắc chắn muốn xóa tin nhắn này? Hành động này không thể hoàn tác.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Hủy</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                confirmDelete();
+                            }}
+                            disabled={isDeleting}
+                            variant="destructive"
+                        >
+                            {isDeleting ? "Đang xóa..." : "Xóa"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

@@ -122,10 +122,11 @@ export const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
                             </div>
                         ) : (
                             filteredUsers.map(user => (
-                                <button
+                                <Button
                                     key={user.id}
+                                    variant="ghost"
                                     onClick={() => handleUserToggle(user.id)}
-                                    className={`w-full p-3 flex items-center gap-3 hover:bg-accent transition-colors ${selectedUserIds.includes(user.id) ? "bg-accent" : ""
+                                    className={`w-full p-3 h-auto justify-start flex items-center gap-3 hover:bg-accent transition-colors ${selectedUserIds.includes(user.id) ? "bg-accent" : ""
                                         }`}
                                 >
                                     <Avatar className="h-8 w-8 relative">
@@ -143,7 +144,7 @@ export const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
                                     {selectedUserIds.includes(user.id) && (
                                         <div className="text-blue-600">✓</div>
                                     )}
-                                </button>
+                                </Button>
                             ))
                         )}
                     </div>
@@ -158,7 +159,7 @@ export const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
                     {/* Actions */}
                     <div className="flex gap-2">
                         <Button
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => onOpenChange(false)}
                             className="flex-1"
                         >

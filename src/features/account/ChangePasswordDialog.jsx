@@ -134,7 +134,7 @@ export function ChangePasswordDialog({ open, onOpenChange }) {
             {success && <p className="text-green-500 text-sm">{success}</p>}
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>
+              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Hủy</Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? "Đang lưu..." : "Đổi mật khẩu"}
               </Button>

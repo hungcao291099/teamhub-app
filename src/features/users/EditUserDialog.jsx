@@ -166,7 +166,7 @@ export function EditUserDialog({ user, onUserUpdated, open, onOpenChange, isAdmi
             )}
 
             <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
                 Hủy
               </Button>
               <Button type="submit" disabled={isSubmitting}>

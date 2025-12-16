@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export const ConversationList: React.FC = () => {
     const { conversations, activeConversationId, setActiveConversation } = useChat();
@@ -31,10 +32,11 @@ export const ConversationList: React.FC = () => {
                 const isOnline = otherUser ? onlineUsers.includes(otherUser.id) : false;
 
                 return (
-                    <button
+                    <Button
                         key={conv.id}
+                        variant="ghost"
                         onClick={() => setActiveConversation(conv.id)}
-                        className={`w-full p-3 flex items-start gap-3 hover:bg-accent transition-colors ${isActive ? "bg-accent" : ""
+                        className={`w-full p-3 h-auto justify-start flex items-start gap-3 hover:bg-accent transition-colors ${isActive ? "bg-accent" : ""
                             }`}
                     >
                         <Avatar className="relative">
@@ -51,7 +53,7 @@ export const ConversationList: React.FC = () => {
                                 <span className={`truncate ${conv.unreadCount > 0 ? "font-bold" : "font-medium"
                                     }`}>{displayName}</span>
                                 {conv.lastMessage && (
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-xs text-muted-foreground font-normal">
                                         {formatDistanceToNow(new Date(conv.lastMessage.createdAt), { addSuffix: true, locale: vi })}
                                     </span>
                                 )}
@@ -59,7 +61,7 @@ export const ConversationList: React.FC = () => {
                             {conv.lastMessage && (
                                 <p className={`text-sm truncate ${conv.unreadCount > 0
                                     ? "font-semibold text-foreground"
-                                    : "text-muted-foreground"
+                                    : "text-muted-foreground font-normal"
                                     }`}>
                                     {conv.lastMessage.type === "image" ? "Đã gửi hình ảnh" : conv.lastMessage.content}
                                 </p>
@@ -71,7 +73,7 @@ export const ConversationList: React.FC = () => {
                                 {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
                             </div>
                         )}
-                    </button>
+                    </Button>
                 );
             })}
         </div>

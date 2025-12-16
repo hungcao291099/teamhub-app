@@ -41,7 +41,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
     const [isSending, setIsSending] = useState(false);
     const [replyTo, setReplyTo] = useState<any>(null);
     const [alertOpen, setAlertOpen] = useState(false);
-    const [alertMessage, setAlertMessage] = "");
+    const [alertMessage, setAlertMessage] = useState("");
     const [groupInfoOpen, setGroupInfoOpen] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);

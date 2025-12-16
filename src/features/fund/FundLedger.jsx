@@ -262,7 +262,7 @@ export function FundLedger() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-500 hover:bg-red-600">
+            <AlertDialogAction onClick={handleDeleteConfirm}>
               Xóa
             </AlertDialogAction>
           </AlertDialogFooter>

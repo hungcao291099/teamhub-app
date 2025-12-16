@@ -83,7 +83,6 @@ export function DonateOverlay() {
                             </p>
 
                             <div className="flex flex-col items-center pt-2">
-                                <span className="text-2xl text-yellow-200 font-bold drop-shadow-md">Đã donate</span>
                                 <span className="text-6xl font-extrabold text-[#00ff00] drop-shadow-[0_4px_4px_rgba(0,0,0,1)] stroke-text-sm">
                                     {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(notification.amount)}
                                 </span>

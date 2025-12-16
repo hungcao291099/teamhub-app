@@ -102,7 +102,7 @@ export function EditAccountForm({ user, onSave, onCancel }) {
       </div>
 
       <div className="flex gap-2 justify-end">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Hủy
         </Button>
         <Button type="submit" disabled={isSubmitting || uploading}>

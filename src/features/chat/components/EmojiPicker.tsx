@@ -25,13 +25,14 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({ onSelect, children }) 
             <PopoverContent className="w-64 p-2">
                 <div className="grid grid-cols-5 gap-2">
                     {EMOJI_LIST.map((emoji) => (
-                        <button
+                        <Button
                             key={emoji}
+                            variant="ghost"
                             onClick={() => handleSelect(emoji)}
-                            className="text-2xl hover:bg-accent rounded p-2 transition-colors"
+                            className="text-2xl hover:bg-accent rounded p-2 transition-colors h-auto w-auto"
                         >
                             {emoji}
-                        </button>
+                        </Button>
                     ))}
                 </div>
             </PopoverContent>

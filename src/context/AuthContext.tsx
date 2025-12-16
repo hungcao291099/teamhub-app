@@ -35,9 +35,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Helper to init socket - socket.io auto-connects to current domain
   const connectSocket = (token: string) => {
-    const newSocket = io({
+    const socketUrl = import.meta.env.VITE_API_URL || window.location.origin;
+    const newSocket = io(socketUrl, {
       auth: { token },
-      query: { clientType: "web" }
+      query: { clientType: "web" },
+      path: "/socket.io",
+      transports: ["websocket", "polling"]
     });
 
     newSocket.on("connect", () => {

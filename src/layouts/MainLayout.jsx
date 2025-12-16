@@ -1,5 +1,5 @@
 // src/layouts/MainLayout.jsx
-import { Outlet, NavLink, useNavigate, Link, useLocation } from "react-router-dom"; // Thêm useLocation
+import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom"; // Thêm useLocation
 import {
   Users,
   DollarSign,
@@ -67,7 +67,7 @@ export function MainLayout() {
             <div className="space-y-4">
               <ChatButton />
               <LiquidSideBarItem
-                item={{ to: "/account", label: "Tài khoản của tôi", icon: UserCircle }}
+                item={{ to: "/account", label: "Tài khoản", icon: UserCircle }}
               />
               <LiquidSideBarItem
                 item={{ label: "Đăng xuất", icon: LogOut }}
@@ -92,11 +92,9 @@ export function MainLayout() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link to="/account">
-                    <UserCircle className="h-4 w-4 mr-2" />
-                    Tài khoản của tôi
-                  </Link>
+                <DropdownMenuItem onClick={() => navigate('/account')}>
+                  <UserCircle className="h-4 w-4 mr-2" />
+                  Tài khoản
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout} className="text-red-500">
                   <LogOut className="h-4 w-4 mr-2" />
