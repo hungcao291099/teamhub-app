@@ -200,8 +200,8 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                     <div className={`relative flex items-center gap-2 ${isOwn ? "flex-row-reverse" : ""}`}>
                         <div
                             className={`${message.type === "image" ? "p-0 bg-transparent overflow-hidden" : "rounded-lg px-4 py-2"} ${message.type !== "image"
-                                    ? (isOwn ? "bg-blue-600 text-white" : "bg-accent text-accent-foreground")
-                                    : ""
+                                ? (isOwn ? "bg-blue-600 text-white" : "bg-accent text-accent-foreground")
+                                : ""
                                 } ${message.isDeleted ? "italic opacity-70" : ""}`}
                         >
                             {message.replyTo && (
@@ -215,14 +215,14 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                             {!message.isDeleted ? (
                                 message.type === "image" && message.fileUrl ? (
                                     <img
-                                        src={`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${message.fileUrl}`}
+                                        src={message.fileUrl}
                                         alt={message.fileName || "Image"}
                                         className="max-w-[280px] max-h-[300px] object-cover rounded-lg cursor-pointer hover:opacity-95 transition-opacity block"
-                                        onClick={() => window.open(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${message.fileUrl}`, "_blank")}
+                                        onClick={() => window.open(message.fileUrl, "_blank")}
                                     />
                                 ) : message.type === "file" && message.fileUrl ? (
                                     <a
-                                        href={`${import.meta.env.VITE_API_URL || "http://localhost:3001"}${message.fileUrl}`}
+                                        href={message.fileUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="underline flex items-center gap-2"

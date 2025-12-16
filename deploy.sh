@@ -46,8 +46,16 @@ fi
 
 # 4. Restart PM2
 echo ">> Restarting PM2 process..."
-# Try to restart, if fails (process not found), start it
-pm2 restart teamhub-server || pm2 start dist/index.js --name "teamhub-server" --cwd ./server
+# Create logs directory if not exists
+mkdir -p logs
+
+# Stop and delete existing process if exists
+pm2 stop ecosystem.config.cjs 2>/dev/null || true
+pm2 delete ecosystem.config.cjs 2>/dev/null || true
+
+# Start with ecosystem config
+pm2 start ecosystem.config.cjs
+pm2 save
 
 if [ $? -eq 0 ]; then
     echo "=========================================="

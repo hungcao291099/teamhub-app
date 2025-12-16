@@ -31,11 +31,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
 
-  // Helper to init socket
+  // Helper to init socket - socket.io auto-connects to current domain
   const connectSocket = (token: string) => {
-    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
     const newSocket = io({
-      auth: { token }
+      auth: { token },
+      query: { clientType: "web" }
     });
 
     newSocket.on("connect", () => {

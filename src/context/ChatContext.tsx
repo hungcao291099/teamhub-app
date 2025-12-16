@@ -73,7 +73,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         if (!token || !user) return;
 
-        const newSocket = io(import.meta.env.VITE_API_URL || "http://localhost:3001", {
+        const newSocket = io({
             auth: { token },
             query: { clientType: "web" }
         });
