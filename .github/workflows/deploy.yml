@@ -2,7 +2,7 @@ name: Production Release (Tag Strategy)
 
 on:
   push:
-  tags:
+    tags:
       - 'v*' 
   workflow_dispatch:
 
