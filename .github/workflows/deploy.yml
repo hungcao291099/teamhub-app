@@ -51,7 +51,7 @@ jobs:
   # --- JOB 2: DEPLOY (Chạy trên Server nội bộ của bạn) ---
   deploy:
     needs: build # Chỉ chạy khi Job Build thành công
-    runs-on: [self-hosted, test_runner] 
+    runs-on: self-hosted
     
     steps:
       - name: Download Artifact
