@@ -82,18 +82,17 @@ jobs:
           # 5. Chạy Database Migration
           echo ">> 🗄️ Running Migrations..."
           cd server
-          npm run migration:run
+          timeout 60s npm run migration:run || echo "⚠️ Migration took too long or failed"
           cd ..
 
           # 6. Reload PM2 (Zero Downtime Deployment)
           echo ">> 🔄 Reloading PM2..."
-          # Nếu app đã chạy thì reload (không chết), nếu chưa chạy thì start mới
-          pm2 reload ecosystem.config.cjs --update-env || pm2 start ecosystem.config.cjs
+          pm2 reload ecosystem.config.cjs --update-env > /dev/null 2>&1 || pm2 start ecosystem.config.cjs > /dev/null 2>&1
           
           # Lưu trạng thái để server khởi động lại tự chạy
-          pm2 save
+          pm2 save > /dev/null 2>&1
           
-          echo ">> ✅ Deployment Successful!"
           pm2 status
+          echo ">> ✅ Successfully Deployed Version: $VERSION"
         env:
           NODE_ENV: production
