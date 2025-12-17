@@ -82,7 +82,7 @@ jobs:
           # 5. Chạy Database Migration
           echo ">> 🗄️ Running Migrations..."
           cd server
-          timeout 60s npm run migration:run || echo "⚠️ Migration took too long or failed"
+          timeout 60s npm run migration:prod || echo "⚠️ Migration took too long or failed"
           cd ..
 
           # 6. Reload PM2 (Zero Downtime Deployment)
