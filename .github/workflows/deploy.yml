@@ -32,8 +32,6 @@ jobs:
           cd server
           npm ci
           npm run build
-          # QUAN TRỌNG: Xóa các gói devDependencies để file artifact nhẹ nhất có thể
-          npm prune --production
 
       # 3. Đóng gói kết quả (Artifact)
       - name: Upload Production Artifact
@@ -43,6 +41,7 @@ jobs:
           path: |
             dist
             server/dist
+            server/src
             server/node_modules
             server/package.json
             ecosystem.config.cjs
@@ -79,13 +78,8 @@ jobs:
           # 4. Di chuyển vào thư mục ứng dụng để chạy lệnh
           cd $TARGET_DIR
 
-          # 5. Chạy Database Migration
-          echo ">> 🗄️ Running Migrations..."
-          cd server
-          timeout 60s npm run migration:prod || echo "⚠️ Migration took too long or failed"
-          cd ..
-
-          # 6. Reload PM2 (Zero Downtime Deployment)
+          # 5. Reload PM2 (Zero Downtime Deployment)
+          # Note: Migrations will run automatically when the app starts (see server/src/index.ts)
           echo ">> 🔄 Reloading PM2..."
           pm2 reload ecosystem.config.cjs --update-env > /dev/null 2>&1 || pm2 start ecosystem.config.cjs > /dev/null 2>&1
           
