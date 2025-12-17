@@ -14,7 +14,7 @@ interface ChatInfoTabsProps {
 }
 
 export const ChatInfoTabs: React.FC<ChatInfoTabsProps> = ({
-    participants,
+    participants = [], // Safe default
     conversationId,
     type,
     currentUserRole,

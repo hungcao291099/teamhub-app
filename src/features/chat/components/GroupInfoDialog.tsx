@@ -87,12 +87,51 @@ export const GroupInfoDialog: React.FC<GroupInfoDialogProps> = ({
         setLoading(true);
         try {
             const info = await chatApi.getGroupInfo(conversationId);
-            setGroupInfo(info);
+            // Ensure participants is always an array
+            if (!info || !info.participants) {
+                console.error("Invalid group info response:", info);
+                setGroupInfo({
+                    id: conversationId,
+                    name: null,
+                    type: currentConversation?.type || "direct",
+                    createdAt: new Date().toISOString(),
+                    participants: [],
+                    currentUserRole: "member"
+                });
+            } else {
+                setGroupInfo(info);
+            }
         } catch (error) {
             console.error("Error loading group info:", error);
-            // Fallback for direct chat if API fails but we have basic info?
-            // Already handled above if type is direct.
-            // If it's group and fails, we show error.
+            // Fallback for direct chat if API fails but we have basic info
+            if (currentConversation && currentConversation.type === "direct") {
+                setGroupInfo({
+                    id: conversationId,
+                    name: currentConversation.name || (currentConversation.participants?.[0]?.username ?? "Chat"),
+                    type: "direct",
+                    createdAt: new Date().toISOString(),
+                    participants: (currentConversation.participants || []).map((p: any) => ({
+                        id: p.id,
+                        userId: p.id,
+                        username: p.username,
+                        name: p.username,
+                        avatarUrl: p.avatarUrl,
+                        role: "member" as const,
+                        joinedAt: new Date().toISOString()
+                    })),
+                    currentUserRole: "member"
+                });
+            } else {
+                // Set safe empty defaults to prevent undefined errors
+                setGroupInfo({
+                    id: conversationId,
+                    name: null,
+                    type: "direct",
+                    createdAt: new Date().toISOString(),
+                    participants: [],
+                    currentUserRole: "member"
+                });
+            }
         } finally {
             setLoading(false);
         }
