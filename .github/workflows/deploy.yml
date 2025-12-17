@@ -25,6 +25,8 @@ jobs:
         run: |
           npm ci
           npm run build
+        env:
+          VITE_API_URL: http://172.16.10.65
 
       # 2. Build Server (Backend)
       - name: Install & Build Server
