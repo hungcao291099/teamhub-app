@@ -221,11 +221,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
                         </p>
                     )}
                 </div>
-                {activeConversation.type === "group" && (
-                    <Button size="icon" variant="ghost" onClick={() => setGroupInfoOpen(true)}>
-                        <Info className="h-5 w-5" />
-                    </Button>
-                )}
+                <Button size="icon" variant="ghost" onClick={() => setGroupInfoOpen(true)}>
+                    <Info className="h-5 w-5" />
+                </Button>
             </div>
 
             {/* Messages */}
@@ -307,19 +305,16 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Group Info Dialog */}
-            {activeConversation.type === "group" && (
-                <GroupInfoDialog
-                    conversationId={activeConversationId!}
-                    open={groupInfoOpen}
-                    onOpenChange={setGroupInfoOpen}
-                    onGroupDeleted={() => {
-                        setGroupInfoOpen(false);
-                        // The ChatContext will handle removing the conversation from the list
-                        // via the socket event
-                    }}
-                />
-            )}
+            {/* Chat Info Dialog */}
+            <GroupInfoDialog
+                conversationId={activeConversationId!}
+                currentConversation={activeConversation}
+                open={groupInfoOpen}
+                onOpenChange={setGroupInfoOpen}
+                onGroupDeleted={() => {
+                    setGroupInfoOpen(false);
+                }}
+            />
         </div>
     );
 };

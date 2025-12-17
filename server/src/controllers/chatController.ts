@@ -8,6 +8,8 @@ import { User } from "../entities/User";
 import { encrypt, decrypt } from "../utils/encryption";
 import { getIO } from "../socket";
 import { In, MoreThan } from "typeorm";
+import * as fs from "fs";
+import * as path from "path";
 
 const conversationRepo = AppDataSource.getRepository(Conversation);
 const messageRepo = AppDataSource.getRepository(Message);
@@ -42,7 +44,7 @@ export const getConversations = async (req: Request, res: Response) => {
                 if (msg) {
                     lastMessage = {
                         id: msg.id,
-                        content: msg.isDeleted ? "Tin nhắn đã bị xóa" : decrypt(msg.content),
+                        content: msg.isDeleted ? "" : decrypt(msg.content),
                         type: msg.type,
                         senderId: msg.senderId,
                         senderName: msg.sender.username,
@@ -222,13 +224,13 @@ export const getMessages = async (req: Request, res: Response) => {
             senderId: msg.senderId,
             senderName: msg.sender.username,
             senderAvatarUrl: msg.sender.avatarUrl,
-            content: msg.isDeleted ? "Tin nhắn đã bị xóa" : decrypt(msg.content),
+            content: msg.isDeleted ? "" : decrypt(msg.content),
             type: msg.type,
             fileUrl: msg.fileUrl,
             fileName: msg.fileName,
             replyTo: msg.replyTo ? {
                 id: msg.replyTo.id,
-                content: msg.replyTo.isDeleted ? "Tin nhắn đã bị xóa" : decrypt(msg.replyTo.content),
+                content: msg.replyTo.isDeleted ? "" : decrypt(msg.replyTo.content),
                 senderName: msg.replyTo.sender.username
             } : null,
             isEdited: msg.isEdited,
@@ -387,9 +389,29 @@ export const deleteMessage = async (req: Request, res: Response) => {
             return res.status(403).json({ error: "Not authorized" });
         }
 
+        // Delete physical file if message has an attachment
+        if (message.fileUrl) {
+            try {
+                // Extract filename from URL (/uploads/chat/filename.ext)
+                const filename = message.fileUrl.split('/').pop();
+                if (filename) {
+                    const filePath = path.join(__dirname, '../../public/uploads/chat', filename);
+
+                    // Delete file if it exists
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                        console.log(`Deleted file: ${filePath}`);
+                    }
+                }
+            } catch (error) {
+                // Log error but continue with message deletion
+                console.error('Error deleting file:', error);
+            }
+        }
+
         message.isDeleted = true;
         message.deletedAt = new Date();
-        message.content = encrypt("Tin nhắn đã bị xóa");
+        message.content = ""; // Empty content to save storage
         await messageRepo.save(message);
 
         // Emit to participants
@@ -553,6 +575,32 @@ export const getGroupInfo = async (req: Request, res: Response) => {
 
         if (!conversation || conversation.type !== "group") {
             return res.status(404).json({ error: "Group not found" });
+        }
+
+        // Check if there's an owner in the group
+        const hasOwner = conversation.participants.some(p => p.role === "owner");
+
+        // If no owner exists, assign the first participant as owner
+        if (!hasOwner && conversation.participants.length > 0) {
+            const firstParticipant = conversation.participants[0];
+            firstParticipant.role = "owner";
+            await participantRepo.save(firstParticipant);
+
+            // Update userParticipant if it's the first one
+            if (userParticipant.id === firstParticipant.id) {
+                userParticipant.role = "owner";
+            }
+
+            // Emit role update to all participants
+            const io = getIO();
+            conversation.participants.forEach(p => {
+                io.to(`user_${p.userId}_web`).emit("chat:role_updated", {
+                    conversationId: conversation.id,
+                    userId: firstParticipant.userId,
+                    role: "owner",
+                    updatedBy: null // System update
+                });
+            });
         }
 
         const participants = conversation.participants.map(p => ({

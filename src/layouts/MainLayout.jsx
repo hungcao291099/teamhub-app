@@ -24,6 +24,7 @@ import { PageTransition } from "@/components/common/PageTransition"; // Import P
 import { LiquidNavBar } from "@/components/liquid/LiquidNavBar";
 import { LiquidSideBar, LiquidSideBarItem } from "@/components/liquid/LiquidSideBar";
 import { ChatButton } from "@/features/chat/components/ChatButton";
+import { MobileChatButton } from "@/features/chat/components/MobileChatButton";
 
 // Danh sách các link nav (đã xóa Xoay tua)
 const navItems = [
@@ -84,24 +85,28 @@ export function MainLayout() {
           <header className="h-16 flex md:hidden items-center justify-between p-4 glass border-b-0 sticky top-0 z-10">
             <h1 className="text-2xl font-bold text-blue-600">TeamHub</h1>
 
-            {/* NÚT ĐĂNG XUẤT (MOBILE) */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <User className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate('/account')}>
-                  <UserCircle className="h-4 w-4 mr-2" />
-                  Tài khoản
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout} className="text-red-500">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Đăng xuất
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+              <MobileChatButton />
+
+              {/* NÚT ĐĂNG XUẤT (MOBILE) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate('/account')}>
+                    <UserCircle className="h-4 w-4 mr-2" />
+                    Tài khoản
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-500">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Đăng xuất
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </header>
 
           <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">

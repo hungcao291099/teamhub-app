@@ -24,6 +24,21 @@ export function ThemeEffectsContainer() {
     }, []);
 
     // Particle System
+    // Marquee Logic
+    const [showMarquee, setShowMarquee] = useState(true);
+
+    useEffect(() => {
+        setShowMarquee(true);
+    }, [currentTheme.id]);
+
+    const handleAnimationComplete = () => {
+        setShowMarquee(false);
+        setTimeout(() => {
+            setShowMarquee(true);
+        }, 30000); // 30s delay
+    };
+
+
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -177,31 +192,23 @@ export function ThemeEffectsContainer() {
         return () => {
             cancelAnimationFrame(animationId);
         };
-    }, [currentTheme, dimensions]);
+    }, [currentTheme, dimensions, showMarquee]);
 
-    // Marquee Logic
-    const [showMarquee, setShowMarquee] = useState(true);
 
-    useEffect(() => {
-        setShowMarquee(true);
-    }, [currentTheme.id]);
-
-    const handleAnimationComplete = () => {
-        setShowMarquee(false);
-        setTimeout(() => {
-            setShowMarquee(true);
-        }, 30000); // 30s delay
-    };
 
     // If theme is default/none, we might still render empty container but cleaner to null check early components
     if (currentTheme.id === 'default' && currentTheme.effects.type === 'none') return null;
+
+    const hasMarquee = !!currentTheme.marquee;
+    // If there is a marquee, sync the canvas visibility with it. Otherwise (just effects), show canvas always.
+    const showEffects = hasMarquee ? showMarquee : true;
 
     return (
         <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden flex flex-col justify-between">
 
             {/* 1. Marquee (Top) */}
             <AnimatePresence>
-                {currentTheme.marquee && showMarquee && (
+                {hasMarquee && showMarquee && (
                     <motion.div
                         initial={{ y: -50, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
@@ -223,12 +230,23 @@ export function ThemeEffectsContainer() {
             </AnimatePresence>
 
 
-            {/* 3. Canvas Layer (Full Screen) */}
-            <canvas
-                ref={canvasRef}
-                className="absolute inset-0 pointer-events-none"
-                style={{ zIndex: -1 }} // Behind UI if possible, or on top with pointer-events-none
-            />
+            {/* 3. Canvas Layer (Full Screen) - Sync with Marquee */}
+            <AnimatePresence>
+                {showEffects && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ zIndex: -1 }}
+                    >
+                        <canvas
+                            ref={canvasRef}
+                            className="w-full h-full"
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Keyframe style for Marquee */}
             <style>{`
@@ -238,7 +256,7 @@ export function ThemeEffectsContainer() {
         }
         .animate-marquee {
           animation: marquee 30s linear 1; /* Run once, slower (30s) */
-          padding-left: 100%; /* Start offscreen */
+          /* padding-left: 100%; removed to fix delay */
         }
       `}</style>
         </div>

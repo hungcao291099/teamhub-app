@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useAuth } from "@/context/AuthContext";
 import { chatApi } from "@/services/chatApi";
-import { Users, UserPlus, Crown, Shield, Trash2, ArrowRightLeft, UserMinus } from "lucide-react";
+import { Users, UserPlus, Trash2, ArrowRightLeft } from "lucide-react";
 import { AddMemberDialog } from "./AddMemberDialog";
 import { TransferOwnershipDialog } from "./TransferOwnershipDialog";
+import { ChatInfoTabs } from "./ChatInfoTabs/index";
 
 interface GroupMember {
     id: number;
@@ -29,6 +28,7 @@ interface GroupInfo {
 
 interface GroupInfoDialogProps {
     conversationId: number | null;
+    currentConversation?: any; // Will fix type
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onGroupDeleted?: () => void;
@@ -36,6 +36,7 @@ interface GroupInfoDialogProps {
 
 export const GroupInfoDialog: React.FC<GroupInfoDialogProps> = ({
     conversationId,
+    currentConversation,
     open,
     onOpenChange,
     onGroupDeleted
@@ -44,16 +45,44 @@ export const GroupInfoDialog: React.FC<GroupInfoDialogProps> = ({
     const [loading, setLoading] = useState(false);
     const [addMemberOpen, setAddMemberOpen] = useState(false);
     const [transferOwnershipOpen, setTransferOwnershipOpen] = useState(false);
-    const { onlineUsers } = useAuth();
 
     useEffect(() => {
         if (open && conversationId) {
             loadGroupInfo();
+        } else {
+            // Reset info when dialog closes or conversationId clears
+            setGroupInfo(null);
         }
     }, [open, conversationId]);
 
     const loadGroupInfo = async () => {
         if (!conversationId) return;
+
+        // If it's a direct conversation, we can construct info from currentConversation
+        // bypassing the API which might fail for non-groups
+        if (currentConversation && currentConversation.type === "direct") {
+            setGroupInfo({
+                id: currentConversation.id,
+                name: currentConversation.name || (currentConversation.participants[0]?.username ?? "Chat"),
+                type: "direct",
+                createdAt: new Date().toISOString(), // Mock or get from conversation
+                participants: currentConversation.participants.map((p: any) => ({
+                    id: p.id, // Participant ID might differ from User ID ideally, but here we assume... wait. 
+                    // In chatApi.ts, participants have { id, username, avatarUrl }.
+                    // In GroupInfo, participants have { id, userId, username, role... }
+                    // We need to map standard participants to GroupMember structure.
+                    // For direct chat, roles don't matter much.
+                    userId: p.id,
+                    username: p.username,
+                    name: p.username,
+                    avatarUrl: p.avatarUrl,
+                    role: "member",
+                    joinedAt: new Date().toISOString()
+                })),
+                currentUserRole: "member"
+            });
+            return;
+        }
 
         setLoading(true);
         try {
@@ -61,10 +90,17 @@ export const GroupInfoDialog: React.FC<GroupInfoDialogProps> = ({
             setGroupInfo(info);
         } catch (error) {
             console.error("Error loading group info:", error);
+            // Fallback for direct chat if API fails but we have basic info?
+            // Already handled above if type is direct.
+            // If it's group and fails, we show error.
         } finally {
             setLoading(false);
         }
     };
+
+    // Check if displayed info matches current conversation
+    const isStale = groupInfo && groupInfo.id !== conversationId;
+    const showLoading = loading || isStale;
 
     const handleRemoveMember = async (userId: number) => {
         if (!conversationId || !groupInfo) return;
@@ -115,30 +151,10 @@ export const GroupInfoDialog: React.FC<GroupInfoDialogProps> = ({
     };
 
     const canAddMembers = groupInfo && (groupInfo.currentUserRole === "owner" || groupInfo.currentUserRole === "admin");
-    const canRemoveMembers = groupInfo && (groupInfo.currentUserRole === "owner" || groupInfo.currentUserRole === "admin");
-    const canPromoteMembers = groupInfo && groupInfo.currentUserRole === "owner";
     const canTransferOwnership = groupInfo && groupInfo.currentUserRole === "owner";
     const canDeleteGroup = groupInfo && groupInfo.currentUserRole === "owner";
 
-    const getRoleBadge = (role: string) => {
-        if (role === "owner") {
-            return (
-                <div className="flex items-center gap-1 bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-2 py-0.5 rounded text-xs font-medium">
-                    <Crown className="h-3 w-3" />
-                    Trưởng nhóm
-                </div>
-            );
-        }
-        if (role === "admin") {
-            return (
-                <div className="flex items-center gap-1 bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded text-xs font-medium">
-                    <Shield className="h-3 w-3" />
-                    Quản trị viên
-                </div>
-            );
-        }
-        return null;
-    };
+    const isGroup = groupInfo?.type === "group";
 
     return (
         <>
@@ -147,120 +163,70 @@ export const GroupInfoDialog: React.FC<GroupInfoDialogProps> = ({
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Users className="h-5 w-5" />
-                            Thông tin nhóm
+                            {isGroup ? "Thông tin nhóm" : "Thông tin cuộc trò chuyện"}
                         </DialogTitle>
                     </DialogHeader>
 
-                    {loading ? (
+                    {showLoading ? (
                         <div className="text-center py-8 text-muted-foreground">Đang tải...</div>
                     ) : groupInfo ? (
                         <div className="space-y-4">
-                            {/* Group name */}
-                            <div>
-                                <h3 className="font-semibold text-lg">{groupInfo.name}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    {groupInfo.participants.length} thành viên
-                                </p>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex flex-wrap gap-2">
-                                {canAddMembers && (
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => setAddMemberOpen(true)}
-                                    >
-                                        <UserPlus className="h-4 w-4 mr-1" />
-                                        Thêm thành viên
-                                    </Button>
-                                )}
-                                {canTransferOwnership && (
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => setTransferOwnershipOpen(true)}
-                                    >
-                                        <ArrowRightLeft className="h-4 w-4 mr-1" />
-                                        Chuyển quyền trưởng nhóm
-                                    </Button>
-                                )}
-                                {canDeleteGroup && (
-                                    <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={handleDeleteGroup}
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-1" />
-                                        Xóa nhóm
-                                    </Button>
-                                )}
-                            </div>
-
-                            {/* Members list */}
-                            <div>
-                                <h4 className="font-medium mb-2">Thành viên</h4>
-                                <div className="space-y-2">
-                                    {groupInfo.participants.map((member) => {
-                                        const isOnline = onlineUsers.includes(member.userId);
-                                        const canRemove = canRemoveMembers && member.role !== "owner";
-                                        const canPromote = canPromoteMembers && member.role !== "owner";
-
-                                        return (
-                                            <div
-                                                key={member.id}
-                                                className="flex items-center gap-3 p-2 rounded hover:bg-accent"
-                                            >
-                                                <Avatar className="h-8 w-8 relative">
-                                                    <AvatarFallback>
-                                                        {member.username.charAt(0).toUpperCase()}
-                                                    </AvatarFallback>
-                                                    {isOnline && (
-                                                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-background rounded-full" />
-                                                    )}
-                                                </Avatar>
-
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-medium truncate">
-                                                        {member.username}
-                                                    </div>
-                                                    {member.name && (
-                                                        <div className="text-sm text-muted-foreground truncate">
-                                                            {member.name}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="flex items-center gap-2">
-                                                    {getRoleBadge(member.role)}
-
-                                                    {canPromote && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => handlePromoteMember(member.userId, member.role)}
-                                                            title={member.role === "admin" ? "Hạ xuống thành viên" : "Thăng lên quản trị viên"}
-                                                        >
-                                                            <Shield className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-
-                                                    {canRemove && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => handleRemoveMember(member.userId)}
-                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                                                        >
-                                                            <UserMinus className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                            {/* Group name - Only for groups */}
+                            {isGroup && (
+                                <div>
+                                    <h3 className="font-semibold text-lg">{groupInfo.name}</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        {groupInfo.participants.length} thành viên
+                                    </p>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* Actions - Only for groups */}
+                            {isGroup && (
+                                <div className="flex flex-wrap gap-2">
+                                    {canAddMembers && (
+                                        <Button
+                                            size="sm"
+                                            variant="default"
+                                            onClick={() => setAddMemberOpen(true)}
+                                        >
+                                            <UserPlus className="h-4 w-4 mr-1" />
+                                            Thêm
+                                        </Button>
+                                    )}
+                                    {canTransferOwnership && (
+                                        <Button
+                                            size="sm"
+                                            variant="warning"
+                                            onClick={() => setTransferOwnershipOpen(true)}
+                                        >
+                                            <ArrowRightLeft className="h-4 w-4 mr-1" />
+                                            Chuyển quyền
+                                        </Button>
+                                    )}
+                                    {canDeleteGroup && (
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            onClick={handleDeleteGroup}
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-1" />
+                                            Xóa nhóm
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Tabs: Members, Media, Links */}
+                            <ChatInfoTabs
+                                key={conversationId} // Force remount when conversation changes
+                                participants={groupInfo.participants}
+                                conversationId={conversationId!}
+                                type={groupInfo.type}
+                                currentUserRole={groupInfo.currentUserRole}
+                                onRemoveMember={handleRemoveMember}
+                                onPromoteMember={handlePromoteMember}
+                            />
                         </div>
                     ) : (
                         <div className="text-center py-8 text-muted-foreground">

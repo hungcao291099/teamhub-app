@@ -18,6 +18,7 @@ import { Loader2, MoreVertical, ChevronDown, AlertTriangle } from "lucide-react"
 import { MessageContextMenu } from "./MessageContextMenu";
 import { EmojiPicker } from "./EmojiPicker";
 import { Button } from "@/components/ui/button";
+import { MediaPreview } from "./MediaPreview";
 
 // Message list component
 interface MessageListProps {
@@ -34,6 +35,11 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
     const [messageToDelete, setMessageToDelete] = useState<number | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [showScrollButton, setShowScrollButton] = useState(false);
+    const [selectedMedia, setSelectedMedia] = useState<{
+        url: string;
+        type: "image" | "video";
+        fileName?: string;
+    } | null>(null);
 
     // Scroll to bottom helper
     const scrollToBottom = () => {
@@ -228,17 +234,38 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                                         src={message.fileUrl}
                                         alt={message.fileName || "Image"}
                                         className="max-w-[280px] max-h-[300px] object-cover rounded-lg cursor-pointer hover:opacity-95 transition-opacity block"
-                                        onClick={() => window.open(message.fileUrl, "_blank")}
+                                        onClick={() => setSelectedMedia({
+                                            url: message.fileUrl!,
+                                            type: "image",
+                                            fileName: message.fileName || undefined
+                                        })}
                                     />
                                 ) : message.type === "file" && message.fileUrl ? (
-                                    <a
-                                        href={message.fileUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="underline flex items-center gap-2"
-                                    >
-                                        📎 {message.fileName}
-                                    </a>
+                                    // Check if it's a video based on extension (basic check)
+                                    /\.(mp4|webm|ogg|mov)$/i.test(message.fileName || "") ? (
+                                        <div
+                                            className="cursor-pointer flex items-center gap-2 p-2 bg-black/5 rounded hover:bg-black/10 transition-colors"
+                                            onClick={() => setSelectedMedia({
+                                                url: message.fileUrl!,
+                                                type: "video",
+                                                fileName: message.fileName || undefined
+                                            })}
+                                        >
+                                            <div className="bg-slate-200 p-2 rounded-full">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-700"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                            </div>
+                                            <span className="underline truncate max-w-[150px]">{message.fileName}</span>
+                                        </div>
+                                    ) : (
+                                        <a
+                                            href={message.fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline flex items-center gap-2"
+                                        >
+                                            📎 {message.fileName}
+                                        </a>
+                                    )
                                 ) : (
                                     <p className="whitespace-pre-wrap break-words">
                                         {contentParts.map((part: string, i: number) =>
@@ -321,7 +348,7 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                         </span>
                     )}
                 </div>
-            </div>
+            </div >
         );
     };
 
@@ -384,6 +411,15 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <MediaPreview
+                open={!!selectedMedia}
+                onOpenChange={(open) => !open && setSelectedMedia(null)}
+                url={selectedMedia?.url || null}
+                type={selectedMedia?.type || "image"}
+                fileName={selectedMedia?.fileName}
+            />
         </div>
     );
 };
+

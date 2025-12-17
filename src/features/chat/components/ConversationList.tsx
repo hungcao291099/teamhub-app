@@ -63,7 +63,9 @@ export const ConversationList: React.FC = () => {
                                     ? "font-semibold text-foreground"
                                     : "text-muted-foreground font-normal"
                                     }`}>
-                                    {conv.lastMessage.type === "image" ? "Đã gửi hình ảnh" : conv.lastMessage.content}
+                                    {conv.lastMessage.type === "image"
+                                        ? "Đã gửi hình ảnh"
+                                        : (conv.lastMessage.content || "Tin nhắn đã bị xóa")}
                                 </p>
                             )}
                         </div>

@@ -13,6 +13,8 @@ const buttonVariants = cva(
                 default: "text-indigo-600 dark:text-indigo-400 border-0",
                 destructive:
                     "text-red-600 dark:text-red-400 border-0",
+                warning:
+                    "text-yellow-600 dark:text-yellow-400 border-0",
                 outline:
                     "border border-input hover:text-accent-foreground",
                 secondary:
@@ -60,6 +62,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             resolvedVariant === 'default' && "primary",
             resolvedVariant === 'secondary' && "secondary",
             resolvedVariant === 'destructive' && "destructive",
+            resolvedVariant === 'warning' && "warning",
             resolvedVariant === 'outline' && "outline",
             resolvedVariant === 'ghost' && "ghost"
         );
@@ -138,11 +141,31 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             </div>
         );
 
+        // Yellow fade background for warning buttons
+        const yellowFadeBackground = !asChild && resolvedVariant === 'warning' && (
+            <div
+                className="absolute inset-0 rounded-2xl pointer-events-none"
+                style={{
+                    background: "linear-gradient(180deg, rgba(234, 179, 8, 0.4) 0%, rgba(234, 179, 8, 0) 100%)",
+                    boxShadow: "inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), inset 0 -2px 5px 0 rgba(0, 0, 0, 0.05), 0 0 15px rgba(234, 179, 8, 0.25), 0 0 25px rgba(234, 179, 8, 0.4), 0 10px 15px -3px rgba(0, 0, 0, 0.1)"
+                }}
+            >
+                {/* Inner glow for glass depth */}
+                <div
+                    className="absolute inset-0 rounded-2xl"
+                    style={{
+                        background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.22) 0%, transparent 50%)"
+                    }}
+                />
+            </div>
+        );
+
         const content = (
             <>
                 {indigoFadeBackground}
                 {whiteFadeBackground}
                 {redFadeBackground}
+                {yellowFadeBackground}
                 {glowBorder}
 
                 <span className="relative z-10 flex items-center justify-center gap-2">
