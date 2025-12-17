@@ -573,34 +573,36 @@ export const getGroupInfo = async (req: Request, res: Response) => {
             relations: ["participants", "participants.user"]
         });
 
-        if (!conversation || conversation.type !== "group") {
-            return res.status(404).json({ error: "Group not found" });
+        if (!conversation) {
+            return res.status(404).json({ error: "Conversation not found" });
         }
 
-        // Check if there's an owner in the group
-        const hasOwner = conversation.participants.some(p => p.role === "owner");
+        // Check if there's an owner in the group (only for group conversations)
+        if (conversation.type === "group") {
+            const hasOwner = conversation.participants.some(p => p.role === "owner");
 
-        // If no owner exists, assign the first participant as owner
-        if (!hasOwner && conversation.participants.length > 0) {
-            const firstParticipant = conversation.participants[0];
-            firstParticipant.role = "owner";
-            await participantRepo.save(firstParticipant);
+            // If no owner exists, assign the first participant as owner
+            if (!hasOwner && conversation.participants.length > 0) {
+                const firstParticipant = conversation.participants[0];
+                firstParticipant.role = "owner";
+                await participantRepo.save(firstParticipant);
 
-            // Update userParticipant if it's the first one
-            if (userParticipant.id === firstParticipant.id) {
-                userParticipant.role = "owner";
-            }
+                // Update userParticipant if it's the first one
+                if (userParticipant.id === firstParticipant.id) {
+                    userParticipant.role = "owner";
+                }
 
-            // Emit role update to all participants
-            const io = getIO();
-            conversation.participants.forEach(p => {
-                io.to(`user_${p.userId}_web`).emit("chat:role_updated", {
-                    conversationId: conversation.id,
-                    userId: firstParticipant.userId,
-                    role: "owner",
-                    updatedBy: null // System update
+                // Emit role update to all participants
+                const io = getIO();
+                conversation.participants.forEach(p => {
+                    io.to(`user_${p.userId}_web`).emit("chat:role_updated", {
+                        conversationId: conversation.id,
+                        userId: firstParticipant.userId,
+                        role: "owner",
+                        updatedBy: null // System update
+                    });
                 });
-            });
+            }
         }
 
         const participants = conversation.participants.map(p => ({
