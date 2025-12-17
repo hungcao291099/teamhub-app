@@ -1,14 +1,15 @@
-name: Deploy to Production
+name: Production Release (Tag Strategy)
 
 on:
   push:
-    branches: ["main"]
+  tags:
+      - 'v*' 
   workflow_dispatch:
 
 jobs:
-  deploy:
-    runs-on: [self-hosted, test_runner] 
-
+  # --- JOB 1: BUILD (Chạy trên Cloud của Github) ---
+  build:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -19,43 +20,80 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Install Dependencies - Client
-        run: npm ci
+      # 1. Build Client (Frontend)
+      - name: Install & Build Client
+        run: |
+          npm ci
+          npm run build
 
-      - name: Install Dependencies - Server
-        run: cd server && npm ci
+      # 2. Build Server (Backend)
+      - name: Install & Build Server
+        run: |
+          cd server
+          npm ci
+          npm run build
+          # QUAN TRỌNG: Xóa các gói devDependencies để file artifact nhẹ nhất có thể
+          npm prune --production
 
-      - name: Build Client
-        run: npm run build
+      # 3. Đóng gói kết quả (Artifact)
+      - name: Upload Production Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-build
+          path: |
+            dist
+            server/dist
+            server/node_modules
+            server/package.json
+            ecosystem.config.cjs
+          retention-days: 1
 
-      - name: Build Server
-        run: cd server && npm run build
+  # --- JOB 2: DEPLOY (Chạy trên Server nội bộ của bạn) ---
+  deploy:
+    needs: build # Chỉ chạy khi Job Build thành công
+    runs-on: [self-hosted, test_runner] 
+    
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-build
+          path: ./temp_deploy
 
-      - name: Run Database Migrations
-        run: cd server && npm run migration:run
+      - name: Deploy Script
+        run: |
+          echo ">> 🚀 Starting Deployment Process..."
+          
+          # --- CẤU HÌNH ĐƯỜNG DẪN (Bạn hãy chỉnh lại cho đúng server của mình) ---
+          TARGET_DIR="$HOME/teamhub-app"  
+          
+          # 1. Tạo thư mục đích nếu chưa có
+          mkdir -p $TARGET_DIR/logs
+          
+          # 2. Copy code mới từ thư mục tạm sang thư mục chạy thật
+          cp -r ./temp_deploy/* $TARGET_DIR/
+          
+          # 3. Dọn dẹp thư mục tạm
+          rm -rf ./temp_deploy
+
+          # 4. Di chuyển vào thư mục ứng dụng để chạy lệnh
+          cd $TARGET_DIR
+
+          # 5. Chạy Database Migration
+          echo ">> 🗄️ Running Migrations..."
+          cd server
+          npm run migration:run
+          cd ..
+
+          # 6. Reload PM2 (Zero Downtime Deployment)
+          echo ">> 🔄 Reloading PM2..."
+          # Nếu app đã chạy thì reload (không chết), nếu chưa chạy thì start mới
+          pm2 reload ecosystem.config.cjs --update-env || pm2 start ecosystem.config.cjs
+          
+          # Lưu trạng thái để server khởi động lại tự chạy
+          pm2 save
+          
+          echo ">> ✅ Deployment Successful!"
+          pm2 status
         env:
           NODE_ENV: production
-
-      - name: Install PM2 globally
-        run: npm install -g pm2
-
-      - name: Create Logs Directory
-        run: mkdir -p logs
-
-      - name: Deploy with PM2
-        run: |
-          # Stop existing processes if they exist
-          pm2 stop ecosystem.config.cjs || true
-          pm2 delete ecosystem.config.cjs || true
-
-          # Start server with PM2 using ecosystem config
-          pm2 start ecosystem.config.cjs
-
-          # Save PM2 process list
-          pm2 save
-
-          # Setup PM2 to start on system boot (run once manually if needed)
-          # pm2 startup
-
-      - name: Display PM2 Status
-        run: pm2 status
