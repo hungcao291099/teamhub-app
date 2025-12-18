@@ -35,8 +35,8 @@ export const ChatButton: React.FC = () => {
             >
                 {showRipple && (
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none">
-                        <span className="absolute inset-0 rounded-full bg-blue-500 opacity-75 animate-ping"></span>
-                        <span className="absolute inset-0 rounded-full bg-blue-500 opacity-50 animate-ping animation-delay-300"></span>
+                        <span className="absolute inset-0 rounded-full bg-primary opacity-75 animate-ping"></span>
+                        <span className="absolute inset-0 rounded-full bg-primary opacity-50 animate-ping animation-delay-300"></span>
                     </div>
                 )}
 

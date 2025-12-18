@@ -16,11 +16,11 @@ import { FundPage } from "@/pages/FundPage";
 import { UtilitiesPage } from "@/pages/UtilitiesPage";
 import { DutyPage } from "@/pages/DutyPage";
 import { TeamCalendarPage } from "@/pages/TeamCalendarPage";
-import { MyAccountPage } from "@/pages/MyAccountPage";
 import { ThemeEventProvider } from "@/context/ThemeEventContext";
 import { ThemeEffectsContainer } from "@/components/theme/ThemeEffectsContainer";
 import { ThemeEventPage } from "@/pages/ThemeEventPage";
 import { DonateOverlay } from "@/features/fund/DonateOverlay";
+import { DocumentTitleUpdater } from "@/components/common/DocumentTitleUpdater";
 
 function App() {
   return (
@@ -34,6 +34,9 @@ function App() {
 
         {/* Donate Overlay - hiển thị ở tất cả các route */}
         <DonateOverlay />
+
+        {/* Document Title Updater - cập nhật title tab với số tin nhắn chưa đọc */}
+        <DocumentTitleUpdater />
 
         <Routes>
           {/* Route Public */}
@@ -51,8 +54,6 @@ function App() {
               <Route path="utilities/duty" element={<DutyPage />} />
               <Route path="utilities/team-calendar" element={<TeamCalendarPage />} />
               <Route path="utilities/theme-event" element={<ThemeEventPage />} />
-
-              <Route path="account" element={<MyAccountPage />} />
             </Route>
           </Route>
 

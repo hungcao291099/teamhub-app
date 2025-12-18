@@ -1,15 +1,7 @@
-import { motion } from "framer-motion";
 import { NavLink } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChevronRight, ClipboardList, CalendarDays, Loader2, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth.js";
-
-// Animation
-const pageAnimation = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -10 },
-};
 
 export function UtilitiesPage() {
   const { currentUser } = useAuth();
@@ -42,13 +34,7 @@ export function UtilitiesPage() {
   ];
 
   return (
-    <motion.div
-      variants={pageAnimation}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      transition={{ duration: 0.2 }}
-    >
+    <div>
       <h1 className="text-xl md:text-3xl font-bold mb-6">Tiện ích</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -58,7 +44,7 @@ export function UtilitiesPage() {
         ))}
 
       </div>
-    </motion.div>
+    </div>
   );
 }
 

@@ -32,14 +32,14 @@ export const MobileChatButton: React.FC = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsOpen(true)}
-                className={`relative ${showRipple ? "text-blue-500" : ""}`}
+                className={`relative ${showRipple ? "text-primary" : ""}`}
             >
                 <div className="relative">
                     <MessageSquare className="h-5 w-5" />
 
                     {showRipple && (
                         <div className="absolute inset-0 pointer-events-none">
-                            <span className="absolute inset-0 rounded-full bg-blue-500 opacity-75 animate-ping"></span>
+                            <span className="absolute inset-0 rounded-full bg-primary opacity-75 animate-ping"></span>
                         </div>
                     )}
                 </div>

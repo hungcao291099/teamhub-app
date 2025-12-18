@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { MessageList } from "./MessageList";
 import { GroupInfoDialog } from "./GroupInfoDialog";
 import { ArrowLeft, Image, Send, Loader2, X, Info } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getImageUrl } from "@/lib/utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -31,10 +32,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
         startTyping,
         stopTyping,
         markAsRead,
-        typingUsers,
         isChatDialogOpen
     } = useChat();
-    const { currentUser } = useAuth();
+    const { currentUser, onlineUsers } = useAuth();
 
     const [input, setInput] = useState("");
     const [isUploading, setIsUploading] = useState(false);
@@ -46,7 +46,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const typingDebounceRef = useRef<NodeJS.Timeout | null>(null);
+    const stopTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const activeConversation = conversations.find(c => c.id === activeConversationId);
 
@@ -108,20 +108,34 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
         e.target.style.height = "auto";
         e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
 
-        // Debounced typing indicator
+        // Handling typing indicators
         if (activeConversationId) {
-            // Clear previous timeout
-            if (typingDebounceRef.current) {
-                clearTimeout(typingDebounceRef.current);
-            }
-
             if (e.target.value.trim()) {
-                // Debounce typing indicator - only send after 300ms of no typing
-                typingDebounceRef.current = setTimeout(() => {
-                    startTyping(activeConversationId);
-                }, 300);
+                // 1. Notify we are typing immediately (ChatContext handles throttling)
+                startTyping(activeConversationId);
+
+                // 2. Schedule stop typing if user stops for 1000ms
+                if (stopTypingTimeoutRef.current) {
+                    clearTimeout(stopTypingTimeoutRef.current);
+                }
+
+                stopTypingTimeoutRef.current = setTimeout(() => {
+                    // Logic handled in ChatContext mostly, but good to be explicit
+                    // Actually, ChatContext auto-stops after 3s, but let's leave it to that
+                    // or we can call stopTyping explicitly here if we want more aggressive "stop"
+                    // when user pauses.
+                    // Let's rely on ChatContext's auto-stop for simplicity, 
+                    // OR call stopTyping here if we want to be precise about "user paused".
+                    // The original requirement was lag fix involving debounce mismatch.
+                    // By removing the 300ms start delay, we improved responsiveness.
+                    // We can also just do nothing here and let the context timeout handle 'stop'.
+                }, 1000);
+
             } else {
-                // Stop typing immediately when input is empty
+                // If input became empty, stop immediately
+                if (stopTypingTimeoutRef.current) {
+                    clearTimeout(stopTypingTimeoutRef.current);
+                }
                 stopTyping(activeConversationId);
             }
         }
@@ -197,9 +211,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
 
     const displayName = activeConversation.type === "group"
         ? activeConversation.name
-        : activeConversation.participants[0]?.username || "Unknown";
+        : (activeConversation.participants[0]?.name || activeConversation.participants[0]?.username || "Unknown");
 
-    const typingList = typingUsers.get(activeConversationId!) || [];
+    const avatarUrl = activeConversation.type === "group"
+        ? null // Add group avatar logic here if needed
+        : activeConversation.participants[0]?.avatarUrl;
+
+    const isOnline = activeConversation.type === "direct" && activeConversation.participants[0]
+        ? onlineUsers.includes(activeConversation.participants[0].id)
+        : false;
 
     return (
         <div className="flex flex-col h-full">
@@ -210,16 +230,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                 )}
-                <Avatar>
-                    <AvatarFallback>{displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                    <Avatar>
+                        <AvatarImage src={getImageUrl(avatarUrl) || undefined} alt={displayName || undefined} className="object-cover" />
+                        <AvatarFallback>{displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    {isOnline && (
+                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full z-10" />
+                    )}
+                </div>
                 <div className="flex-1">
                     <h3 className="font-semibold">{displayName}</h3>
-                    {typingList.length > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                            {typingList.join(", ")} đang gõ...
-                        </p>
-                    )}
                 </div>
                 <Button size="icon" variant="ghost" onClick={() => setGroupInfoOpen(true)}>
                     <Info className="h-5 w-5" />

@@ -46,7 +46,11 @@ export const ChatInfoTabs: React.FC<ChatInfoTabsProps> = ({
                     </TabsContent>
                 )}
 
-                <TabsContent value="media" className="m-0 border-none p-0 outline-none data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:slide-in-from-bottom-2 duration-500">
+                <TabsContent
+                    value="media"
+                    forceMount={true}
+                    className="m-0 border-none p-0 outline-none data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:slide-in-from-bottom-2 duration-500 data-[state=inactive]:hidden"
+                >
                     <MediaList conversationId={conversationId} />
                 </TabsContent>
 

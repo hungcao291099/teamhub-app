@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
-import { updateUser, uploadAvatar } from "@/services/userService.js";
+import { updateUser, uploadAvatar } from "@/services/userService";
 
 // Form này được nhúng trực tiếp, không phải Dialog
 export function EditAccountForm({ user, onSave, onCancel }) {

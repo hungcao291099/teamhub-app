@@ -213,7 +213,7 @@ export function ThemeEffectsContainer() {
                         initial={{ y: -50, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: -50, opacity: 0 }}
-                        className="w-full bg-gradient-to-r from-transparent via-black/50 to-transparent text-white py-1 overflow-hidden backdrop-blur-sm"
+                        className="w-full bg-black/80 text-white py-1 overflow-hidden"
                         style={{ backgroundColor: currentTheme.colors.primary ? `${currentTheme.colors.primary}99` : undefined }}
                     >
                         <div

@@ -1,12 +1,34 @@
 import React, { useState, useEffect, useRef } from "react";
 import { chatApi, Message } from "@/services/chatApi";
 import { Skeleton } from "@/components/ui/skeleton";
-
 import { MediaPreview } from "../MediaPreview";
 
 interface MediaListProps {
     conversationId: number;
 }
+
+// Sub-component to handle individual image loading state
+const MediaItem = ({ msg, onClick }: { msg: Message, onClick: () => void }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    return (
+        <div className="aspect-square relative group overflow-hidden rounded-md bg-muted">
+            {/* Skeleton overlay while image is loading */}
+            {!isLoaded && (
+                <Skeleton className="absolute inset-0 w-full h-full z-10" />
+            )}
+
+            <img
+                src={msg.fileUrl || ""}
+                alt="Media"
+                className={`object-cover w-full h-full transition-all duration-300 hover:scale-105 cursor-pointer ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+                loading="lazy"
+                onLoad={() => setIsLoaded(true)}
+                onClick={onClick}
+            />
+        </div>
+    );
+};
 
 export const MediaList: React.FC<MediaListProps> = ({ conversationId }) => {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -21,33 +43,33 @@ export const MediaList: React.FC<MediaListProps> = ({ conversationId }) => {
     const observerRef = useRef<HTMLDivElement>(null);
     const isFetching = useRef(false);
 
-    // Initial load and page changes
+    // Initial load - fetch multiple pages for better coverage
     useEffect(() => {
         const fetchMedia = async () => {
             if (isFetching.current) return;
-            if (!hasMore && page !== 1) return;
 
             isFetching.current = true;
-            // Only show main loading spinner on first page
-            if (page === 1) setLoading(true);
+            setLoading(true);
 
             try {
-                // Determine how to get ONLY media.
-                // Currently chatApi doesn't support filtering by type.
-                // We will fetch messages and filter client-side for this demo.
-                // In production, we should add a `type` filter to the API.
-                // WE ARE ASSUMING 'getMessages' returns mixed content.
-                // Limitation: Pagination might be sparse if media is rare.
-                // For this request, we'll try to fetch enough pages to fill the grid or mock filtering.
-                // To adhere to "Lazy load" behavior, we'll just fetch pages and filter.
+                // Load first 3 pages to get ~60 messages (since page size is now 20)
+                // This ensures we have good coverage for finding images
+                const promises = [
+                    chatApi.getMessages(conversationId, 1),
+                    chatApi.getMessages(conversationId, 2),
+                    chatApi.getMessages(conversationId, 3)
+                ];
 
-                const res = await chatApi.getMessages(conversationId, page);
+                const results = await Promise.all(promises);
 
-                // Filter for images
-                const mediaMessages = res.messages.filter(m => m.type === 'image');
+                // Combine all messages and filter for images
+                const allMessages = results.flatMap(r => r.messages);
+                const mediaMessages = allMessages.filter(m => m.type === 'image');
 
-                setMessages(prev => page === 1 ? mediaMessages : [...prev, ...mediaMessages]);
-                setHasMore(res.hasMore);
+                setMessages(mediaMessages);
+                // Check if there are more pages after page 3
+                setHasMore(results[2].hasMore);
+                setPage(3); // Start from page 3 for subsequent infinite scroll loads
 
             } catch (error) {
                 console.error("Error loading media:", error);
@@ -58,7 +80,36 @@ export const MediaList: React.FC<MediaListProps> = ({ conversationId }) => {
         };
 
         fetchMedia();
-    }, [conversationId, page]);
+    }, [conversationId]); // Only depends on conversationId, not page
+
+    // Infinite scroll - load additional pages when needed
+    useEffect(() => {
+        if (page <= 3) return; // Skip for initial 3 pages (already loaded above)
+
+        const fetchMoreMedia = async () => {
+            if (isFetching.current) return;
+            if (!hasMore) return;
+
+            isFetching.current = true;
+
+            try {
+                const res = await chatApi.getMessages(conversationId, page);
+
+                // Filter for images
+                const mediaMessages = res.messages.filter(m => m.type === 'image');
+
+                setMessages(prev => [...prev, ...mediaMessages]);
+                setHasMore(res.hasMore);
+
+            } catch (error) {
+                console.error("Error loading more media:", error);
+            } finally {
+                isFetching.current = false;
+            }
+        };
+
+        fetchMoreMedia();
+    }, [conversationId, page, hasMore]);
 
     // Intersection Observer for Infinite Scroll
     useEffect(() => {
@@ -87,24 +138,18 @@ export const MediaList: React.FC<MediaListProps> = ({ conversationId }) => {
             {/* Grid Layout */}
             <div className="grid grid-cols-3 gap-2">
                 {messages.map((msg) => (
-                    <div key={msg.id} className="aspect-square relative group overflow-hidden rounded-md bg-muted">
-                        {/* We use standard img for simplicity but could use an Image component with blurhash */}
-                        <img
-                            src={msg.fileUrl || ""}
-                            alt="Media"
-                            className="object-cover w-full h-full transition-transform hover:scale-105 cursor-pointer"
-                            loading="lazy"
-                            onClick={() => setSelectedMedia({
-                                url: msg.fileUrl || "",
-                                type: "image",
-                                fileName: msg.fileName || undefined
-                            })}
-                        />
-                    </div>
+                    <MediaItem
+                        key={msg.id}
+                        msg={msg}
+                        onClick={() => setSelectedMedia({
+                            url: msg.fileUrl || "",
+                            type: "image",
+                            fileName: msg.fileName || undefined
+                        })}
+                    />
                 ))}
 
-                {/* Skeleton Loading State */}
-                {/* Show skeletons if loading first page or fetching more */}
+                {/* Skeleton Loading State (for API fetching) */}
                 {(loading || isFetching.current) && (
                     Array.from({ length: 9 }).map((_, i) => (
                         <Skeleton key={`skeleton-${i}`} className="aspect-square rounded-md w-full h-full" />

@@ -14,12 +14,19 @@ export const LinkList: React.FC<LinkListProps> = ({ conversationId }) => {
         const fetchLinks = async () => {
             setLoading(true);
             try {
-                // Similar to MediaList, we filter client-side for now
-                // Ideally this should use a backend filter API
-                const res = await chatApi.getMessages(conversationId, 1); // Get recent 50
-                // Simple regex or detection of links in content?
-                // Or check if type === 'text' and content contains http
-                const linkMessages = res.messages.filter(m =>
+                // Load first 3 pages to get ~60 messages (since page size is now 20)
+                // This ensures we have good coverage for finding links
+                const promises = [
+                    chatApi.getMessages(conversationId, 1),
+                    chatApi.getMessages(conversationId, 2),
+                    chatApi.getMessages(conversationId, 3)
+                ];
+
+                const results = await Promise.all(promises);
+
+                // Combine all messages and filter for links
+                const allMessages = results.flatMap(r => r.messages);
+                const linkMessages = allMessages.filter(m =>
                     m.type === 'text' && /(https?:\/\/[^\s]+)/g.test(m.content)
                 );
 

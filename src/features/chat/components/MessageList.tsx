@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/hooks/useAuth";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
@@ -18,6 +18,7 @@ import { Loader2, MoreVertical, ChevronDown, AlertTriangle } from "lucide-react"
 import { MessageContextMenu } from "./MessageContextMenu";
 import { EmojiPicker } from "./EmojiPicker";
 import { Button } from "@/components/ui/button";
+import { getImageUrl } from "@/lib/utils";
 import { MediaPreview } from "./MediaPreview";
 
 // Message list component
@@ -26,7 +27,7 @@ interface MessageListProps {
 }
 
 export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
-    const { messages, isLoading, loadMoreMessages, addReaction, removeReaction, deleteMessage, activeConversationId } = useChat();
+    const { messages, isLoading, loadMoreMessages, addReaction, removeReaction, deleteMessage, activeConversationId, typingUsers } = useChat();
     const { currentUser } = useAuth();
     const scrollRef = useRef<HTMLDivElement>(null);
     const prevScrollHeightRef = useRef(0);
@@ -96,7 +97,7 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                 prevScrollHeightRef.current = scrollHeight;
             }, 100);
         }
-    }, [messages, isLoading, activeConversationId]); // Added activeConversationId to deps to be safe
+    }, [messages, isLoading, activeConversationId, typingUsers]); // Added typingUsers to auto-scroll when typing appears
 
     const handleScroll = () => {
         if (!scrollRef.current) return;
@@ -202,6 +203,7 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
             >
                 {!isOwn && (
                     <Avatar className="h-8 w-8">
+                        <AvatarImage src={getImageUrl(message.senderAvatarUrl) || undefined} alt={message.senderName} />
                         <AvatarFallback className="text-xs">
                             {message.senderName.charAt(0).toUpperCase()}
                         </AvatarFallback>
@@ -216,7 +218,7 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                     <div className={`relative flex items-center gap-2 ${isOwn ? "flex-row-reverse" : ""}`}>
                         <div
                             className={`${message.type === "image" ? "p-0 bg-transparent overflow-hidden" : "rounded-lg px-4 py-2"} ${message.type !== "image"
-                                ? (isOwn ? "bg-blue-600 text-white" : "bg-accent text-accent-foreground")
+                                ? (isOwn ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground")
                                 : ""
                                 } ${message.isDeleted ? "italic opacity-70" : ""}`}
                         >
@@ -306,10 +308,10 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                                             onClick={() => handleReaction(message.id, emoji, hasMyReaction, myRxn)}
                                             className={`text-sm px-2 py-1 h-auto rounded-full transition-colors shadow-md border ${hasMyReaction
                                                 ? isOwn
-                                                    ? "bg-blue-600/80 text-white border-blue-700 hover:bg-blue-600/90" // Own message with my reaction
+                                                    ? "bg-primary/80 text-primary-foreground border-primary hover:bg-primary/90" // Own message with my reaction
                                                     : "bg-accent/80 border-accent-foreground/20 hover:bg-accent/90"   // Other's message with my reaction
                                                 : isOwn
-                                                    ? "bg-blue-600/60 text-white/90 border-blue-700/50 hover:bg-blue-600/70" // Own message without my reaction
+                                                    ? "bg-primary/60 text-primary-foreground/90 border-primary/50 hover:bg-primary/70" // Own message without my reaction
                                                     : "bg-accent/60 border-accent-foreground/10 hover:bg-accent/70"         // Other's message without my reaction
                                                 }`}
                                             title={reactions.map((r: any) => r.username).join(", ")}
@@ -348,7 +350,7 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                         </span>
                     )}
                 </div>
-            </div >
+            </div>
         );
     };
 
@@ -371,6 +373,27 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                     </div>
                 ) : (
                     messages.map((message, index) => renderMessage(message, index))
+                )}
+
+                {/* Typing Indicator */}
+                {activeConversationId && typingUsers.get(activeConversationId) && typingUsers.get(activeConversationId)!.length > 0 && (
+                    <div className="flex gap-2 mb-4 group">
+                        <Avatar className="h-8 w-8">
+                            <AvatarFallback className="text-xs animate-pulse">...</AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col items-start max-w-[70%]">
+                            <div className="bg-accent text-accent-foreground rounded-lg px-4 py-2 flex items-center gap-1">
+                                <span className="text-sm text-muted-foreground mr-1">
+                                    {typingUsers.get(activeConversationId)!.join(", ")} đang gõ
+                                </span>
+                                <span className="flex gap-0.5">
+                                    <span className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                    <span className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                    <span className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
 
@@ -422,4 +445,3 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
         </div>
     );
 };
-

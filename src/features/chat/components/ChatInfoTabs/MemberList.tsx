@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getImageUrl } from "@/lib/utils";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -78,14 +79,17 @@ export const MemberList: React.FC<MemberListProps> = ({
                         key={member.id}
                         className="flex items-center gap-3 p-2 rounded hover:bg-accent"
                     >
-                        <Avatar className="h-8 w-8 relative">
-                            <AvatarFallback>
-                                {member.username.charAt(0).toUpperCase()}
-                            </AvatarFallback>
+                        <div className="relative w-8 h-8 shrink-0">
+                            <Avatar className="h-full w-full">
+                                <AvatarImage src={getImageUrl(member.avatarUrl) || undefined} alt={member.username} />
+                                <AvatarFallback>
+                                    {member.username.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
                             {isOnline && (
-                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-background rounded-full" />
+                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-background rounded-full z-10" />
                             )}
-                        </Avatar>
+                        </div>
 
                         <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">

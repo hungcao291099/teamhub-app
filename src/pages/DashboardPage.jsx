@@ -1,7 +1,6 @@
 // src/pages/DashboardPage.jsx
 // force update
 import { useState, useEffect } from "react"; // <-- THÊM
-import { motion } from "framer-motion";
 import { UpcomingEvents } from "@/features/dashboard/UpcomingEvents";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"; // <-- THÊM
 import { Skeleton } from "@/components/ui/skeleton"; // <-- THÊM
@@ -9,13 +8,6 @@ import { DollarSign, User } from "lucide-react"; // <-- THÊM
 import { getFundSummary } from "@/services/fundService"; // <-- THÊM
 import { getRotationData } from "@/services/dutyService"; // <-- THÊM
 import { formatCurrency } from "@/lib/utils"; // <-- THÊM (từ Bước 1)
-
-// Animation
-const pageAnimation = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -10 },
-};
 
 export function DashboardPage() {
   const [loadingStats, setLoadingStats] = useState(true);
@@ -63,13 +55,7 @@ export function DashboardPage() {
   }, []);
 
   return (
-    <motion.div
-      variants={pageAnimation}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      transition={{ duration: 0.2 }}
-    >
+    <div>
       <h1 className="text-xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
         Chào mừng đến với TeamHub
       </h1>
@@ -123,6 +109,6 @@ export function DashboardPage() {
         </div>
 
       </div>
-    </motion.div>
+    </div>
   );
 }

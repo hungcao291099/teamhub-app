@@ -58,6 +58,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Use ref to avoid stale closure in socket event handlers
     const activeConversationRef = useRef<number | null>(null);
+    const lastTypingSentRef = useRef<Map<number, number>>(new Map()); // convId -> timestamp
 
     // Keep ref in sync with state
     useEffect(() => {
@@ -146,11 +147,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         newSocket.on("chat:typing_start", ({ userId, username, conversationId }: { userId: number; username: string; conversationId: number }) => {
             if (userId === user?.id) return; // Ignore own typing
             setTypingUsers(prev => {
-                const newMap = new Map(prev);
-                const current = newMap.get(conversationId) || [];
-                if (!current.includes(username)) {
-                    newMap.set(conversationId, [...current, username]);
+                const current = prev.get(conversationId) || [];
+                if (current.includes(username)) {
+                    return prev; // No change needed
                 }
+                const newMap = new Map(prev);
+                newMap.set(conversationId, [...current, username]);
                 return newMap;
             });
         });
@@ -207,6 +209,49 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setMessages([]);
             }
             refreshConversations();
+        });
+
+        // Global user update (avatar/name changes)
+        newSocket.on("user:updated", (data: { userId: number; avatarUrl?: string; name?: string; username?: string }) => {
+            console.log("User updated:", data);
+
+            // 1. Update participants in conversations
+            setConversations(prev => prev.map(conv => ({
+                ...conv,
+                participants: conv.participants.map(p => {
+                    if (p.id === data.userId) {
+                        return {
+                            ...p,
+                            avatarUrl: data.avatarUrl !== undefined ? data.avatarUrl : p.avatarUrl,
+                            // name property doesn't exist on Conversation participant type, so we skip it
+                            username: data.username !== undefined ? data.username : p.username
+                        };
+                    }
+                    return p;
+                })
+            })));
+
+            // 2. Update messages (sender info) if they belong to this user
+            setMessages(prev => prev.map(msg => {
+                let changed = false;
+                const newMsg = { ...msg };
+
+                // Update sender
+                if (msg.senderId === data.userId) {
+                    if (data.avatarUrl !== undefined) newMsg.senderAvatarUrl = data.avatarUrl;
+                    if (data.username !== undefined) newMsg.senderName = data.username; // Or name? Message expects senderName usually as username
+                    changed = true;
+                }
+
+                // Update replyTo sender if exists
+                if (msg.replyTo && msg.replyTo.senderName && data.username && msg.replyTo.senderName === data.username) {
+                    // This is weak matching by name, ideal would be senderId in replyTo but API might not give it clearly
+                    // Checking interface: replyTo has id, content, senderName. No senderId.
+                    // We can't safely update replyTo sender without senderId. Skip for now to avoid wrong updates.
+                }
+
+                return changed ? newMsg : msg;
+            }));
         });
 
 
@@ -382,13 +427,21 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const startTyping = useCallback((conversationId: number) => {
         if (!socket || !user) return;
 
-        // Clear existing timeout
-        const existing = typingTimeoutRef.current.get(conversationId);
-        if (existing) clearTimeout(existing);
+        // Clear existing stop typing timeout if user continues typing
+        const existingTimeout = typingTimeoutRef.current.get(conversationId);
+        if (existingTimeout) clearTimeout(existingTimeout);
 
-        socket.emit("chat:typing_start", { conversationId, username: user?.username });
+        // Throttle: only send "typing_start" if not sent in last 3 seconds
+        const now = Date.now();
+        const lastSent = lastTypingSentRef.current.get(conversationId) || 0;
 
-        // Auto stop after 3 seconds
+        if (now - lastSent > 3000) {
+            socket.emit("chat:typing_start", { conversationId, username: user?.username });
+            lastTypingSentRef.current.set(conversationId, now);
+        }
+
+        // Auto stop after 3 seconds of inactivity
+        // This is a safety net; ChatWindow will also call stopTyping explicitly when input is empty/blur
         const timeout = setTimeout(() => {
             stopTyping(conversationId);
         }, 3000);
@@ -403,6 +456,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             clearTimeout(timeout);
             typingTimeoutRef.current.delete(conversationId);
         }
+
+        // Allow sending start_typing again immediately next time
+        lastTypingSentRef.current.delete(conversationId);
 
         socket.emit("chat:typing_stop", { conversationId });
     }, [socket]);

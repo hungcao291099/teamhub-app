@@ -1,4 +1,5 @@
 // src/layouts/MainLayout.jsx
+import { useState } from "react"; // Added useState
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom"; // Thêm useLocation
 import {
   Users,
@@ -25,6 +26,7 @@ import { LiquidNavBar } from "@/components/liquid/LiquidNavBar";
 import { LiquidSideBar, LiquidSideBarItem } from "@/components/liquid/LiquidSideBar";
 import { ChatButton } from "@/features/chat/components/ChatButton";
 import { MobileChatButton } from "@/features/chat/components/MobileChatButton";
+import { AccountDialog } from "@/features/account/AccountDialog"; // Import AccountDialog
 
 // Danh sách các link nav (đã xóa Xoay tua)
 const navItems = [
@@ -38,6 +40,7 @@ export function MainLayout() {
   // --- THÊM LOGIC ĐĂNG XUẤT ---
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const [showAccountDialog, setShowAccountDialog] = useState(false); // State for Account Dialog
 
   const handleLogout = async () => {
     try {
@@ -61,14 +64,15 @@ export function MainLayout() {
           items={navItems}
           header={
             <div className="flex items-center justify-center">
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">TeamHub</h1>
+              <h1 className="text-2xl font-bold text-primary">TeamHub</h1>
             </div>
           }
           footer={
             <div className="space-y-4">
               <ChatButton />
               <LiquidSideBarItem
-                item={{ to: "/account", label: "Tài khoản", icon: UserCircle }}
+                item={{ label: "Tài khoản", icon: UserCircle }}
+                onClick={() => setShowAccountDialog(true)}
               />
               <LiquidSideBarItem
                 item={{ label: "Đăng xuất", icon: LogOut }}
@@ -81,9 +85,9 @@ export function MainLayout() {
 
         <div className="flex-1 flex flex-col overflow-hidden">
 
-          {/* --- HEADER (Mobile) - GLASS --- */}
-          <header className="h-16 flex md:hidden items-center justify-between p-4 glass border-b-0 sticky top-0 z-10">
-            <h1 className="text-2xl font-bold text-blue-600">TeamHub</h1>
+          {/* --- HEADER (Mobile) - SOLID --- */}
+          <header className="h-16 flex md:hidden items-center justify-between p-4 bg-card border-b border-border sticky top-0 z-10">
+            <h1 className="text-2xl font-bold text-primary">TeamHub</h1>
 
             <div className="flex items-center gap-2">
               <MobileChatButton />
@@ -96,7 +100,7 @@ export function MainLayout() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => navigate('/account')}>
+                  <DropdownMenuItem onClick={() => setShowAccountDialog(true)}>
                     <UserCircle className="h-4 w-4 mr-2" />
                     Tài khoản
                   </DropdownMenuItem>
@@ -110,7 +114,11 @@ export function MainLayout() {
           </header>
 
           <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">
-            <Outlet />
+            <AnimatePresence mode="wait">
+              <PageTransition key={location.pathname} className="h-full">
+                <Outlet />
+              </PageTransition>
+            </AnimatePresence>
           </main>
 
           {/* --- BOTTOM NAV (Mobile) - LIQUID DOCK --- */}
@@ -119,6 +127,8 @@ export function MainLayout() {
           </div>
         </div>
 
+        {/* Global Account Dialog */}
+        <AccountDialog open={showAccountDialog} onOpenChange={setShowAccountDialog} />
       </div>
     </TooltipProvider>
   );
