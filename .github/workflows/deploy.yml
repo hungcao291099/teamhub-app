@@ -1,16 +1,14 @@
-name: Production Release (Tag Strategy)
+name: Deploy to Production
 
 on:
   push:
-    tags:
-      - 'v*' 
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
-  # --- JOB DUY NHẤT: BUILD & DEPLOY (Chạy trên Server nội bộ) ---
-  build-and-deploy:
+  deploy:
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -19,51 +17,45 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
 
-      - name: Build & Deploy Script
-        run: |
-          echo ">> 🚀 Starting Build & Deploy Process..."
-          
-          # --- CẤU HÌNH ĐƯỜNG DẪN ---
-          TARGET_DIR="$HOME/teamhub-app"
-          WORKSPACE_DIR=$(pwd)
-          
-          # 1. Build Client (Frontend)
-          echo ">> 📦 Building Frontend..."
-          npm ci
-          npm run build
-          
-          # 2. Build Server (Backend)
-          echo ">> 📦 Building Backend..."
-          cd server
-          npm ci
-          npm run build
-          cd $WORKSPACE_DIR
-          
-          # 3. Tạo thư mục đích nếu chưa có
-          mkdir -p $TARGET_DIR/logs
-          
-          # 4. Copy các file cần thiết sang thư mục chạy thật
-          echo ">> 📁 Copying files to $TARGET_DIR..."
-          cp -r dist $TARGET_DIR/
-          cp -r server/dist $TARGET_DIR/server/
-          cp -r server/src $TARGET_DIR/server/
-          cp -r server/node_modules $TARGET_DIR/server/
-          cp server/package.json $TARGET_DIR/server/
-          cp ecosystem.config.cjs $TARGET_DIR/
+      - name: Install Dependencies - Client
+        run: npm ci
 
-          # 5. Di chuyển vào thư mục ứng dụng để chạy lệnh
-          cd $TARGET_DIR
+      - name: Install Dependencies - Server
+        run: cd server && npm ci
 
-          # 6. Reload PM2 (Zero Downtime Deployment)
-          # Note: Migrations will run automatically when the app starts (see server/src/index.ts)
-          echo ">> 🔄 Reloading PM2..."
-          pm2 reload ecosystem.config.cjs --update-env > /dev/null 2>&1 || pm2 start ecosystem.config.cjs > /dev/null 2>&1
-          
-          # Lưu trạng thái để server khởi động lại tự chạy
-          pm2 save > /dev/null 2>&1
-          
-          pm2 status
-          echo ">> ✅ Successfully Deployed!"
+      - name: Build Client
+        run: npm run build
+
+      - name: Build Server
+        run: cd server && npm run build
+
+      - name: Run Database Migrations
+        run: cd server && npm run migration:run
         env:
           NODE_ENV: production
+
+      - name: Install PM2 globally
+        run: npm install -g pm2
+
+      - name: Create Logs Directory
+        run: mkdir -p logs
+
+      - name: Deploy with PM2
+        run: |
+          # Stop existing processes if they exist
+          pm2 stop ecosystem.config.cjs || true
+          pm2 delete ecosystem.config.cjs || true
+
+          # Start server with PM2 using ecosystem config
+          pm2 start ecosystem.config.cjs
+
+          # Save PM2 process list
+          pm2 save
+
+          # Setup PM2 to start on system boot (run once manually if needed)
+          # pm2 startup
+
+      - name: Display PM2 Status
+        run: pm2 status
