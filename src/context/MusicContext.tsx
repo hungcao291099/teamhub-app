@@ -142,7 +142,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             api.post("/music/ended").catch(console.error);
         });
 
-        audio.addEventListener("error", (e) => {
+        audio.addEventListener("error", (_e) => {
             const audioError = audio.error;
             let errorMessage = "Không thể phát audio";
             if (audioError) {
