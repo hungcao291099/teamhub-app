@@ -49,8 +49,6 @@ export const useMusic = () => {
 export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { socket } = useAuth();
     const audioRef = useRef<HTMLAudioElement | null>(null);
-    const gainNodeRef = useRef<GainNode | null>(null);
-    const audioContextRef = useRef<AudioContext | null>(null);
 
     const [musicState, setMusicState] = useState<MusicState>({
         currentMusic: null,
@@ -67,23 +65,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Initialize audio element with Web Audio API for better volume control
+    // Initialize audio element (simple approach - no CORS issues)
     useEffect(() => {
         const audio = new Audio();
-        audio.crossOrigin = "anonymous";
+        // DO NOT set crossOrigin - it causes CORS issues with YouTube
         audioRef.current = audio;
-
-        // Create Web Audio API context for gain control
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        audioContextRef.current = audioContext;
-
-        const source = audioContext.createMediaElementSource(audio);
-        const gainNode = audioContext.createGain();
-        gainNodeRef.current = gainNode;
-
-        // Connect: audio -> gain -> speakers
-        source.connect(gainNode);
-        gainNode.connect(audioContext.destination);
 
         audio.addEventListener("timeupdate", () => {
             setCurrentTime(audio.currentTime);
@@ -94,42 +80,50 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
 
         audio.addEventListener("error", (e) => {
-            console.error("Audio error:", e);
-            setError("Không thể phát audio");
+            const audioError = audio.error;
+            let errorMessage = "Không thể phát audio";
+
+            if (audioError) {
+                switch (audioError.code) {
+                    case MediaError.MEDIA_ERR_ABORTED:
+                        errorMessage = "Phát lại bị hủy";
+                        break;
+                    case MediaError.MEDIA_ERR_NETWORK:
+                        errorMessage = "Lỗi mạng khi tải audio";
+                        break;
+                    case MediaError.MEDIA_ERR_DECODE:
+                        errorMessage = "Không thể giải mã audio";
+                        break;
+                    case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                        errorMessage = "Link audio đã hết hạn hoặc không hỗ trợ. Vui lòng set lại nhạc.";
+                        break;
+                }
+                console.error("Audio error:", audioError.code, audioError.message);
+            } else {
+                console.error("Audio error event:", e);
+            }
+
+            setError(errorMessage);
         });
 
-        // Resume AudioContext on user interaction (browser requirement)
-        const resumeContext = () => {
-            if (audioContext.state === "suspended") {
-                audioContext.resume();
-            }
-        };
-        document.addEventListener("click", resumeContext, { once: true });
+        // Apply initial volume
+        audio.volume = volume;
 
         return () => {
             audio.pause();
             audio.src = "";
-            audioContext.close();
             audioRef.current = null;
-            gainNodeRef.current = null;
-            audioContextRef.current = null;
         };
     }, []);
 
-    // Update volume using GainNode (more reliable than audio.volume)
+    // Update volume
     useEffect(() => {
         localStorage.setItem("musicVolume", volume.toString());
         const effectiveVolume = isMuted ? 0 : volume;
 
-        // Use GainNode for volume control (bypasses CORS restrictions)
-        if (gainNodeRef.current) {
-            gainNodeRef.current.gain.value = effectiveVolume;
-            console.log("GainNode volume set to:", effectiveVolume);
-        }
-
-        // Also set audio.volume as fallback
         if (audioRef.current) {
             audioRef.current.volume = effectiveVolume;
+            console.log("Volume set to:", effectiveVolume);
         }
     }, [volume, isMuted]);
 
@@ -157,11 +151,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     useEffect(() => {
         if (!audioRef.current) return;
 
-        // Always apply current volume via GainNode
+        // Apply current volume
         const effectiveVolume = isMuted ? 0 : volume;
-        if (gainNodeRef.current) {
-            gainNodeRef.current.gain.value = effectiveVolume;
-        }
         audioRef.current.volume = effectiveVolume;
 
         if (musicState.currentMusic?.audioUrl) {
@@ -171,10 +162,6 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
 
             if (musicState.isPlaying) {
-                // Resume AudioContext if suspended (browser autoplay policy)
-                if (audioContextRef.current?.state === "suspended") {
-                    audioContextRef.current.resume();
-                }
 
                 // Calculate current position based on startedAt
                 if (musicState.startedAt) {

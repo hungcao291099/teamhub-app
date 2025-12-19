@@ -17,7 +17,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
+
+      - name: Install yt-dlp (for Music Feature)
+        run: |
+          # Check if yt-dlp is already installed
+          if ! command -v yt-dlp &> /dev/null; then
+            echo ">> Installing yt-dlp..."
+            sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+            sudo chmod a+rx /usr/local/bin/yt-dlp
+          else
+            echo ">> yt-dlp already installed: $(yt-dlp --version)"
+          fi
 
       - name: Install Dependencies - Client
         run: npm ci
@@ -31,31 +41,84 @@ jobs:
       - name: Build Server
         run: cd server && npm run build
 
+      - name: Deploy to Production Directory
+        run: |
+          echo ">> 🚀 Starting Deploy Process..."
+          
+          # --- CẤU HÌNH ĐƯỜNG DẪN ---
+          TARGET_DIR="$HOME/teamhub-app"
+          WORKSPACE_DIR=$(pwd)
+          
+          # 1. Tạo cấu trúc thư mục đầy đủ
+          echo ">> 📁 Preparing directories..."
+          mkdir -p $TARGET_DIR/logs
+          mkdir -p $TARGET_DIR/server/public/uploads
+          mkdir -p $TARGET_DIR/server/src
+          mkdir -p $TARGET_DIR/dist
+          
+          # 2. Backup database và .env trước khi xóa
+          echo ">> 💾 Backing up database and .env files..."
+          BACKUP_DIR="/tmp/teamhub-backup-$(date +%s)"
+          mkdir -p $BACKUP_DIR
+          
+          # Backup files ở server/ (cùng cấp .env)
+          cp $TARGET_DIR/server/*.db $BACKUP_DIR/ 2>/dev/null || true
+          cp $TARGET_DIR/server/*.sqlite $BACKUP_DIR/ 2>/dev/null || true
+          cp $TARGET_DIR/server/.env $BACKUP_DIR/.env 2>/dev/null || true
+          
+          # Backup files ở server/src/
+          cp $TARGET_DIR/server/src/*.db $BACKUP_DIR/src_db/ 2>/dev/null || mkdir -p $BACKUP_DIR/src_db && cp $TARGET_DIR/server/src/*.db $BACKUP_DIR/src_db/ 2>/dev/null || true
+          cp $TARGET_DIR/server/src/*.sqlite $BACKUP_DIR/src_sqlite/ 2>/dev/null || mkdir -p $BACKUP_DIR/src_sqlite && cp $TARGET_DIR/server/src/*.sqlite $BACKUP_DIR/src_sqlite/ 2>/dev/null || true
+          
+          # 3. Xóa các file build cũ (GIỮ LẠI uploads!)
+          echo ">> 🗑️ Removing old build files..."
+          rm -rf $TARGET_DIR/dist/*
+          rm -rf $TARGET_DIR/server/dist
+          rm -rf $TARGET_DIR/server/node_modules
+          # Xóa src nhưng giữ lại database
+          find $TARGET_DIR/server/src -type f ! -name "*.db" ! -name "*.sqlite" -delete 2>/dev/null || true
+          find $TARGET_DIR/server -maxdepth 1 -type f ! -name "*.db" ! -name "*.sqlite" ! -name ".env" -delete 2>/dev/null || true
+          
+          # 4. Copy files mới từ workspace sang production
+          echo ">> 📁 Copying new files to $TARGET_DIR..."
+          cp -r $WORKSPACE_DIR/dist/* $TARGET_DIR/dist/
+          cp -r $WORKSPACE_DIR/server/dist $TARGET_DIR/server/
+          cp -r $WORKSPACE_DIR/server/src/* $TARGET_DIR/server/src/
+          cp -r $WORKSPACE_DIR/server/node_modules $TARGET_DIR/server/
+          cp $WORKSPACE_DIR/server/package.json $TARGET_DIR/server/
+          cp $WORKSPACE_DIR/ecosystem.config.cjs $TARGET_DIR/
+          
+          # 5. Restore database và .env từ backup
+          echo ">> 🔄 Restoring database and .env files..."
+          cp $BACKUP_DIR/*.db $TARGET_DIR/server/ 2>/dev/null || true
+          cp $BACKUP_DIR/*.sqlite $TARGET_DIR/server/ 2>/dev/null || true
+          cp $BACKUP_DIR/.env $TARGET_DIR/server/.env 2>/dev/null || true
+          cp $BACKUP_DIR/src_db/*.db $TARGET_DIR/server/src/ 2>/dev/null || true
+          cp $BACKUP_DIR/src_sqlite/*.sqlite $TARGET_DIR/server/src/ 2>/dev/null || true
+          
+          # 6. Dọn dẹp backup
+          rm -rf $BACKUP_DIR
+          
+          echo ">> ✅ Files copied successfully!"
+
       - name: Run Database Migrations
-        run: cd server && npm run migration:run
+        run: |
+          cd $HOME/teamhub-app/server
+          npm run migration:run
         env:
           NODE_ENV: production
 
-      - name: Install PM2 globally
-        run: npm install -g pm2
-
-      - name: Create Logs Directory
-        run: mkdir -p logs
-
       - name: Deploy with PM2
         run: |
-          # Stop existing processes if they exist
-          pm2 stop ecosystem.config.cjs || true
-          pm2 delete ecosystem.config.cjs || true
-
-          # Start server with PM2 using ecosystem config
-          pm2 start ecosystem.config.cjs
-
+          cd $HOME/teamhub-app
+          
+          # Reload hoặc Start PM2
+          pm2 reload ecosystem.config.cjs --update-env 2>&1 || pm2 start ecosystem.config.cjs 2>&1
+          
           # Save PM2 process list
           pm2 save
-
-          # Setup PM2 to start on system boot (run once manually if needed)
-          # pm2 startup
+          
+          echo ">> ✅ PM2 deployed successfully!"
 
       - name: Display PM2 Status
         run: pm2 status
