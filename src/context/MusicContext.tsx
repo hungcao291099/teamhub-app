@@ -116,6 +116,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [voteState, setVoteState] = useState<VoteState | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const lastAudioUrlRef = useRef<string>("");
 
     // Computed: Check if current user owns the playing song
     const isOwner = currentUser?.id === musicState.currentMusic?.addedBy?.userId;
@@ -142,7 +144,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             api.post("/music/ended").catch(console.error);
         });
 
-        audio.addEventListener("error", (_e) => {
+        audio.addEventListener("error", async (_e) => {
             const audioError = audio.error;
             let errorMessage = "Không thể phát audio";
             if (audioError) {
@@ -157,8 +159,22 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         errorMessage = "Không thể giải mã audio";
                         break;
                     case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-                        errorMessage = "Link audio đã hết hạn. Vui lòng thêm lại nhạc.";
-                        break;
+                        // Try to refresh the audio URL
+                        errorMessage = "Link audio đã hết hạn. Đang làm mới...";
+                        setError(errorMessage);
+                        // Request server to refresh audio URL for current song
+                        if (!isRefreshing) {
+                            setIsRefreshing(true);
+                            try {
+                                await api.post("/music/refresh-audio");
+                                setError(null);
+                            } catch (refreshErr) {
+                                setError("Link audio đã hết hạn. Vui lòng thêm lại nhạc.");
+                            } finally {
+                                setIsRefreshing(false);
+                            }
+                        }
+                        return;
                 }
             }
             setError(errorMessage);
@@ -254,33 +270,41 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     useEffect(() => {
         if (!audioRef.current) return;
 
+        const audio = audioRef.current;
         const effectiveVolume = isMuted ? 0 : volume;
-        audioRef.current.volume = effectiveVolume;
+        audio.volume = effectiveVolume;
 
-        if (musicState.currentMusic?.audioUrl) {
-            if (audioRef.current.src !== musicState.currentMusic.audioUrl) {
-                audioRef.current.src = musicState.currentMusic.audioUrl;
+        const currentAudioUrl = musicState.currentMusic?.audioUrl;
+
+        // Only update if there's actually music to play
+        if (currentAudioUrl) {
+            // Only change src if it's different (prevent unnecessary reloads)
+            if (lastAudioUrlRef.current !== currentAudioUrl) {
+                lastAudioUrlRef.current = currentAudioUrl;
+                audio.src = currentAudioUrl;
             }
 
             if (musicState.isPlaying) {
                 if (musicState.startedAt) {
                     const position = (Date.now() - musicState.startedAt) / 1000;
-                    if (Math.abs(audioRef.current.currentTime - position) > 2) {
-                        audioRef.current.currentTime = position;
+                    if (Math.abs(audio.currentTime - position) > 2) {
+                        audio.currentTime = position;
                     }
                 }
-                audioRef.current.play().catch(console.error);
+                audio.play().catch(console.error);
             } else {
-                audioRef.current.pause();
+                audio.pause();
                 if (musicState.pausedAt !== null) {
-                    audioRef.current.currentTime = musicState.pausedAt;
+                    audio.currentTime = musicState.pausedAt;
                 }
             }
-        } else {
-            audioRef.current.pause();
-            audioRef.current.src = "";
+        } else if (lastAudioUrlRef.current !== "") {
+            // Only clear audio if we previously had music
+            lastAudioUrlRef.current = "";
+            audio.pause();
+            audio.src = "";
         }
-    }, [musicState, volume, isMuted]);
+    }, [musicState.currentMusic?.audioUrl, musicState.isPlaying, musicState.startedAt, musicState.pausedAt, volume, isMuted]);
 
     // ==================== Playback ====================
 

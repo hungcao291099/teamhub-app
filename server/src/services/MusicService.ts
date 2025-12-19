@@ -362,12 +362,25 @@ export async function extractAudioInfo(url: string): Promise<MusicInfo> {
         throw new Error(`Failed to extract audio: ${error.message}`);
     }
 }
-
 /**
  * Get current music state
  */
 export function getMusicState(): MusicState {
     return { ...musicState, queue: [...musicState.queue] };
+}
+
+/**
+ * Update audio URL for current song (when URL expires)
+ */
+export function updateCurrentAudioUrl(newAudioUrl: string): MusicState {
+    if (musicState.currentMusic && musicState.currentIndex >= 0) {
+        musicState.currentMusic.audioUrl = newAudioUrl;
+        // Also update in queue
+        if (musicState.currentIndex < musicState.queue.length) {
+            musicState.queue[musicState.currentIndex].audioUrl = newAudioUrl;
+        }
+    }
+    return musicState;
 }
 
 /**

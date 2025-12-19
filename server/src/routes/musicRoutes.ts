@@ -26,7 +26,8 @@ import {
     submitVote,
     cancelVote,
     getVoteState,
-    VoteActionType
+    VoteActionType,
+    updateCurrentAudioUrl
 } from "../services/MusicService";
 import { getIO, getOnlineUsersCount } from "../socket";
 
@@ -331,6 +332,35 @@ router.post("/ended", (req: Request, res: Response) => {
     onSongEnd();
     broadcastState();
     res.json({ success: true, state: getMusicState() });
+});
+
+/**
+ * POST /music/refresh-audio
+ * Refresh audio URL for current song (when URL expires)
+ */
+router.post("/refresh-audio", async (req: Request, res: Response) => {
+    try {
+        const state = getMusicState();
+
+        if (!state.currentMusic || !state.currentMusic.url) {
+            return res.status(400).json({ error: "No music currently playing" });
+        }
+
+        // Re-extract audio info using original URL
+        const originalUrl = state.currentMusic.url;
+        console.log(`Refreshing audio URL for: ${originalUrl}`);
+
+        const refreshedInfo = await extractAudioInfo(originalUrl);
+
+        // Update audio URL in the actual state (not copy)
+        updateCurrentAudioUrl(refreshedInfo.audioUrl);
+
+        broadcastState();
+        res.json({ success: true, audioUrl: refreshedInfo.audioUrl });
+    } catch (error: any) {
+        console.error("Error refreshing audio URL:", error);
+        res.status(500).json({ error: error.message || "Failed to refresh audio URL" });
+    }
 });
 
 // ==================== VOTING ROUTES ====================
