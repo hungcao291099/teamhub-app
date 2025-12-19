@@ -2,7 +2,7 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import { Server as HttpServer } from "http";
 import jwt from "jsonwebtoken";
 import config from "./config";
-import { getMusicState } from "./services/MusicService";
+import { getMusicState, getVoteState, setOnVoteChange } from "./services/MusicService";
 
 let io: SocketIOServer;
 
@@ -63,9 +63,19 @@ export const initSocket = (httpServer: HttpServer) => {
         const musicState = getMusicState();
         socket.emit("music:state", musicState);
 
+        // Send current vote state if any
+        const voteState = getVoteState();
+        if (voteState) {
+            socket.emit("music:vote_state", voteState);
+        }
+
         // Music: Client requests current state
         socket.on("music:get_state", () => {
             socket.emit("music:state", getMusicState());
+            const currentVote = getVoteState();
+            if (currentVote) {
+                socket.emit("music:vote_state", currentVote);
+            }
         });
 
 
@@ -116,11 +126,21 @@ export const initSocket = (httpServer: HttpServer) => {
         });
     });
 
+    // Setup vote broadcast callback
+    setOnVoteChange((vote, result) => {
+        if (result) {
+            io.emit("music:vote_end", { vote, result });
+        } else if (vote) {
+            io.emit("music:vote_state", vote);
+        }
+    });
+
     return io;
 };
 
 // Export getter for online users
 export const getOnlineUsers = () => Array.from(onlineUsers);
+export const getOnlineUsersCount = () => onlineUsers.size;
 
 export const getIO = () => {
     if (!io) {

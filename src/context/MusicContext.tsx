@@ -20,6 +20,19 @@ export interface MusicInfo {
 }
 
 export type LoopMode = "off" | "one" | "all";
+export type VoteActionType = 'skip' | 'previous' | 'pause' | 'stop' | 'delete';
+
+export interface VoteState {
+    actionType: VoteActionType;
+    songTitle: string;
+    initiatorId: number;
+    initiatorName: string;
+    targetIndex?: number;
+    votes: number[];
+    requiredVotes: number;
+    startedAt: number;
+    expiresAt: number;
+}
 
 export interface MusicState {
     currentMusic: MusicInfo | null;
@@ -56,6 +69,12 @@ interface MusicContextType {
     playPrevious: () => void;
     setLoopMode: (mode: LoopMode) => void;
     toggleShuffle: () => void;
+    // Voting
+    voteState: VoteState | null;
+    isOwner: boolean;
+    executeAction: (actionType: VoteActionType, targetIndex?: number) => Promise<void>;
+    submitVote: () => void;
+    cancelVote: () => void;
     // Status
     isLoading: boolean;
     error: string | null;
@@ -96,6 +115,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [isMuted, setIsMuted] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [voteState, setVoteState] = useState<VoteState | null>(null);
+
+    // Computed: Check if current user owns the playing song
+    const isOwner = currentUser?.id === musicState.currentMusic?.addedBy?.userId;
+
+    // Action name mapping for Vietnamese
+    const actionNames: Record<VoteActionType, string> = {
+        skip: "bỏ qua bài hát",
+        previous: "quay lại bài trước",
+        pause: "tạm dừng",
+        stop: "dừng phát",
+        delete: "xóa bài hát"
+    };
 
     // Initialize audio element
     useEffect(() => {
@@ -166,15 +198,57 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             });
         };
 
+        const handleVoteState = (vote: VoteState) => {
+            setVoteState(vote);
+        };
+
+        const handleVoteEnd = (data: { vote: VoteState | null; result: 'passed' | 'failed' | 'cancelled' | 'expired' }) => {
+            setVoteState(null);
+            const actionName = data.vote ? actionNames[data.vote.actionType] : "hành động";
+
+            switch (data.result) {
+                case 'passed':
+                    toast.success(`Vote thành công!`, {
+                        description: `Đã ${actionName}`,
+                        duration: 3000,
+                    });
+                    break;
+                case 'cancelled':
+                    toast.info(`Vote đã bị hủy`, {
+                        description: `${data.vote?.initiatorName} đã hủy vote ${actionName}`,
+                        duration: 3000,
+                    });
+                    break;
+                case 'expired':
+                    toast.warning(`Vote hết hạn`, {
+                        description: `Không đủ số vote để ${actionName}`,
+                        duration: 3000,
+                    });
+                    break;
+            }
+        };
+
+        const handleActionExecuted = (data: { actionType: VoteActionType; userId: number; username: string }) => {
+            toast.success(`${data.username} đã ${actionNames[data.actionType]}`, {
+                duration: 3000
+            });
+        };
+
         socket.on("music:state", handleMusicState);
         socket.on("music:queue_added", handleQueueAdded);
+        socket.on("music:vote_state", handleVoteState);
+        socket.on("music:vote_end", handleVoteEnd);
+        socket.on("music:action_executed", handleActionExecuted);
         socket.emit("music:get_state");
 
         return () => {
             socket.off("music:state", handleMusicState);
             socket.off("music:queue_added", handleQueueAdded);
+            socket.off("music:vote_state", handleVoteState);
+            socket.off("music:vote_end", handleVoteEnd);
+            socket.off("music:action_executed", handleActionExecuted);
         };
-    }, [socket]);
+    }, [socket, actionNames]);
 
     // Sync audio playback with state
     useEffect(() => {
@@ -290,6 +364,49 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         api.post("/music/shuffle").catch(console.error);
     }, []);
 
+    // ==================== Voting Functions ====================
+
+    const executeAction = useCallback(async (actionType: VoteActionType, targetIndex?: number) => {
+        try {
+            const response = await api.post("/music/action", {
+                actionType,
+                userId: currentUser?.id,
+                username: currentUser?.username,
+                targetIndex
+            });
+
+            if (!response.data.executed) {
+                // Vote started (show only to initiator)
+                toast.info(`Đã bắt đầu vote để ${actionNames[actionType]}`, {
+                    description: `Cần ${response.data.vote.requiredVotes} vote để thực hiện`,
+                    duration: 3000
+                });
+            }
+            // For executed=true, socket broadcast will show toast to all users
+        } catch (err: any) {
+            const message = err.response?.data?.error || "Không thể thực hiện hành động";
+            toast.error(message);
+        }
+    }, [currentUser, actionNames]);
+
+    const submitVoteAction = useCallback(() => {
+        if (!voteState) return;
+        api.post("/music/vote", { userId: currentUser?.id })
+            .then(() => {
+                toast.success("Đã vote!", { duration: 2000 });
+            })
+            .catch((err) => {
+                toast.error(err.response?.data?.error || "Không thể vote");
+            });
+    }, [currentUser, voteState]);
+
+    const cancelVoteAction = useCallback(() => {
+        api.post("/music/vote/cancel", { userId: currentUser?.id })
+            .catch((err) => {
+                toast.error(err.response?.data?.error || "Không thể hủy vote");
+            });
+    }, [currentUser]);
+
     const value: MusicContextType = {
         musicState,
         currentTime,
@@ -310,6 +427,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         playPrevious,
         setLoopMode,
         toggleShuffle,
+        // Voting
+        voteState,
+        isOwner,
+        executeAction,
+        submitVote: submitVoteAction,
+        cancelVote: cancelVoteAction,
+        // Status
         isLoading,
         error
     };

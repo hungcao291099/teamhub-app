@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import {
     DndContext,
     closestCenter,
@@ -40,6 +41,7 @@ import {
     User
 } from "lucide-react";
 import { useMusic, MusicInfo, LoopMode } from "@/context/MusicContext";
+import { VotingOverlay } from "@/components/music/VotingOverlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -162,11 +164,13 @@ const SortableQueueItem: React.FC<SortableQueueItemProps> = ({
 };
 
 const MusicPage: React.FC = () => {
+    const { currentUser } = useAuth();
     const {
         musicState, currentTime, volume, isMuted,
-        play, pause, stop, seek, setVolume, toggleMute,
+        play, seek, setVolume, toggleMute,
         addToQueue, removeFromQueue, moveInQueue, moveToTop, clearQueue,
-        playNext, playPrevious, setLoopMode, toggleShuffle,
+        setLoopMode, toggleShuffle,
+        executeAction, isOwner,
         isLoading, error
     } = useMusic();
 
@@ -176,6 +180,9 @@ const MusicPage: React.FC = () => {
     const isPlaying = musicState.isPlaying;
     const duration = musicState.currentMusic?.duration || 0;
     const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+    // Chỉ user đã add bài nhạc mới được phép tua
+    const canSeek = isOwner;
 
     // DnD sensors
     const sensors = useSensors(
@@ -212,6 +219,18 @@ const MusicPage: React.FC = () => {
         const nextMode: Record<LoopMode, LoopMode> = { off: "all", all: "one", one: "off" };
         setLoopMode(nextMode[musicState.loopMode]);
     };
+
+    // Check if user can delete a song directly (owns it) or needs to vote
+    const handleRemoveFromQueue = useCallback((index: number) => {
+        const song = musicState.queue[index];
+        // If user owns the song, delete directly
+        if (song?.addedBy?.userId === currentUser?.id) {
+            removeFromQueue(index);
+        } else {
+            // Otherwise, vote to delete
+            executeAction('delete', index);
+        }
+    }, [musicState.queue, currentUser?.id, removeFromQueue, executeAction]);
 
     return (
         <div className="container max-w-4xl mx-auto py-8 px-4">
@@ -282,7 +301,14 @@ const MusicPage: React.FC = () => {
                     <CardContent className="pt-4">
                         {/* Progress */}
                         <div className="mb-4">
-                            <Slider value={[progress]} onValueChange={handleSeek} max={100} step={0.1} className="cursor-pointer" />
+                            <Slider
+                                value={[progress]}
+                                onValueChange={handleSeek}
+                                max={100}
+                                step={0.1}
+                                className={cn("cursor-pointer", !canSeek && "opacity-50 pointer-events-none")}
+                                disabled={!canSeek}
+                            />
                             <div className="flex justify-between text-sm text-muted-foreground mt-1">
                                 <span>{formatTime(currentTime)}</span>
                                 <span>{formatTime(duration)}</span>
@@ -295,19 +321,19 @@ const MusicPage: React.FC = () => {
                                 <Button variant="ghost" size="icon" onClick={toggleShuffle} className={cn("h-9 w-9 rounded-full", musicState.shuffleEnabled && "text-primary")} title={musicState.shuffleEnabled ? "Shuffle On" : "Shuffle Off"}>
                                     <Shuffle className="w-4 h-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={playPrevious} disabled={isLoading || musicState.queue.length <= 1}>
+                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => executeAction('previous')} disabled={isLoading || musicState.queue.length <= 1}>
                                     <SkipBack className="w-4 h-4" />
                                 </Button>
-                                <Button size="lg" className={cn("h-12 w-12 rounded-full", isPlaying && "bg-primary hover:bg-primary/90")} onClick={isPlaying ? pause : play} disabled={isLoading}>
+                                <Button size="lg" className={cn("h-12 w-12 rounded-full", isPlaying && "bg-primary hover:bg-primary/90")} onClick={() => isPlaying ? executeAction('pause') : play()} disabled={isLoading}>
                                     {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={playNext} disabled={isLoading || musicState.queue.length <= 1}>
+                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => executeAction('skip')} disabled={isLoading || musicState.queue.length <= 1}>
                                     <SkipForward className="w-4 h-4" />
                                 </Button>
                                 <Button variant="ghost" size="icon" onClick={cycleLoopMode} className={cn("h-9 w-9 rounded-full", musicState.loopMode !== "off" && "text-primary")} title={`Loop: ${musicState.loopMode}`}>
                                     {musicState.loopMode === "one" ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
                                 </Button>
-                                <Button variant="outline" size="icon" className="h-9 w-9 rounded-full ml-2" onClick={stop} disabled={isLoading} title="Stop">
+                                <Button variant="outline" size="icon" className="h-9 w-9 rounded-full ml-2" onClick={() => executeAction('stop')} disabled={isLoading} title="Stop">
                                     <Square className="w-3.5 h-3.5" />
                                 </Button>
                             </div>
@@ -355,7 +381,7 @@ const MusicPage: React.FC = () => {
                                             isPlaying={isPlaying}
                                             isCurrent={index === musicState.currentIndex}
                                             currentIndex={musicState.currentIndex}
-                                            onRemove={() => removeFromQueue(index)}
+                                            onRemove={() => handleRemoveFromQueue(index)}
                                             onMoveToTop={() => moveToTop(index)}
                                         />
                                     ))}
@@ -376,6 +402,9 @@ const MusicPage: React.FC = () => {
                     </CardContent>
                 </Card>
             )}
+
+            {/* Voting Overlay */}
+            <VotingOverlay />
         </div>
     );
 };

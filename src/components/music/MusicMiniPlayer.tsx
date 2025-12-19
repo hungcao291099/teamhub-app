@@ -48,13 +48,11 @@ export const MusicMiniPlayer: React.FC<MusicMiniPlayerProps> = ({ onClose }) => 
         volume,
         isMuted,
         play,
-        pause,
         setVolume,
         toggleMute,
-        playNext,
-        playPrevious,
         setLoopMode,
         toggleShuffle,
+        executeAction,
         isLoading
     } = useMusic();
 
@@ -144,13 +142,13 @@ export const MusicMiniPlayer: React.FC<MusicMiniPlayerProps> = ({ onClose }) => 
                                 <Button variant="ghost" size="icon" className={cn("h-7 w-7 rounded-full", musicState.shuffleEnabled && "text-primary")} onClick={toggleShuffle} title="Shuffle">
                                     <Shuffle className="w-3.5 h-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={playPrevious} disabled={isLoading || !hasQueue}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => executeAction('previous')} disabled={isLoading || !hasQueue}>
                                     <SkipBack className="w-3.5 h-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={isPlaying ? pause : play} disabled={isLoading}>
+                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => isPlaying ? executeAction('pause') : play()} disabled={isLoading}>
                                     {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={playNext} disabled={isLoading || !hasQueue}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => executeAction('skip')} disabled={isLoading || !hasQueue}>
                                     <SkipForward className="w-3.5 h-3.5" />
                                 </Button>
                                 <Button variant="ghost" size="icon" className={cn("h-7 w-7 rounded-full", musicState.loopMode !== "off" && "text-primary")} onClick={cycleLoopMode} title={`Loop: ${musicState.loopMode}`}>

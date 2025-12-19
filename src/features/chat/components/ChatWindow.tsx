@@ -43,40 +43,97 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertMessage, setAlertMessage] = useState("");
     const [groupInfoOpen, setGroupInfoOpen] = useState(false);
+    // Pending pasted images (not yet sent)
+    const [pendingImages, setPendingImages] = useState<{ file: File; preview: string }[]>([]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const stopTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    // Track last marked message to prevent duplicate markAsRead calls
+    const lastMarkedMessageRef = useRef<{ conversationId: number; messageId: number } | null>(null);
+    const markAsReadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const activeConversation = conversations.find(c => c.id === activeConversationId);
 
+    // Reset last marked ref when conversation changes
     useEffect(() => {
-        // Only mark messages as read when:
-        // 1. Dialog is open
-        // 2. There are messages  
-        // 3. Last message is NOT from current user
-        if (isChatDialogOpen && activeConversationId && messages.length > 0 && currentUser) {
-            const lastMessage = messages[messages.length - 1];
+        lastMarkedMessageRef.current = null;
+    }, [activeConversationId]);
 
-            // Only mark as read if last message is from someone else
-            if (lastMessage.senderId !== currentUser.id) {
-                markAsRead(activeConversationId, lastMessage.id);
+    useEffect(() => {
+        // Mark messages as read when:
+        // 1. Dialog is open
+        // 2. Conversation is selected
+        // 3. There are messages
+        if (isChatDialogOpen && activeConversationId && messages.length > 0 && currentUser) {
+            // Find the last message from OTHER users (not from current user)
+            // This is what we need to mark as read
+            const lastOtherUserMessage = [...messages]
+                .reverse()
+                .find(msg => msg.senderId !== currentUser.id);
+
+            if (lastOtherUserMessage) {
+                // Only call markAsRead if we haven't already marked this specific message
+                const alreadyMarked = lastMarkedMessageRef.current?.conversationId === activeConversationId
+                    && lastMarkedMessageRef.current?.messageId === lastOtherUserMessage.id;
+
+                if (!alreadyMarked) {
+                    // Debounce the markAsRead call
+                    if (markAsReadTimeoutRef.current) {
+                        clearTimeout(markAsReadTimeoutRef.current);
+                    }
+
+                    markAsReadTimeoutRef.current = setTimeout(() => {
+                        console.log('[ChatWindow] Marking as read:', activeConversationId, lastOtherUserMessage.id);
+                        markAsRead(activeConversationId, lastOtherUserMessage.id);
+                        lastMarkedMessageRef.current = {
+                            conversationId: activeConversationId,
+                            messageId: lastOtherUserMessage.id
+                        };
+                    }, 100); // Fast response
+                }
             }
         }
+
+        return () => {
+            if (markAsReadTimeoutRef.current) {
+                clearTimeout(markAsReadTimeoutRef.current);
+            }
+        };
     }, [isChatDialogOpen, activeConversationId, messages, markAsRead, currentUser]);
 
     const handleSend = async () => {
-        if (!input.trim() || isSending) return;
+        const hasText = input.trim().length > 0;
+        const hasImages = pendingImages.length > 0;
+
+        if ((!hasText && !hasImages) || isSending) return;
 
         setIsSending(true);
         try {
-            await sendMessage(
-                input.trim(),
-                "text",
-                undefined,
-                undefined,
-                replyTo?.id
-            );
+            // First, send any pending images
+            for (const img of pendingImages) {
+                try {
+                    const { fileUrl, fileName } = await uploadFile(img.file);
+                    await sendMessage(fileName, "image", fileUrl, fileName, replyTo?.id);
+                } catch (error) {
+                    console.error("Error uploading pending image:", error);
+                }
+                // Revoke the blob URL
+                URL.revokeObjectURL(img.preview);
+            }
+            setPendingImages([]);
+
+            // Then send text message if any
+            if (hasText) {
+                await sendMessage(
+                    input.trim(),
+                    "text",
+                    undefined,
+                    undefined,
+                    replyTo?.id
+                );
+            }
+
             setReplyTo(null);
             setInput("");
             stopTyping(activeConversationId!);
@@ -170,8 +227,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
         }
     };
 
-    const handlePaste = async (e: React.ClipboardEvent) => {
+    const handlePaste = (e: React.ClipboardEvent) => {
         const items = e.clipboardData.items;
+        const newImages: { file: File; preview: string }[] = [];
+
         for (const item of items) {
             if (item.type.startsWith("image/")) {
                 e.preventDefault();
@@ -184,19 +243,34 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
                     continue;
                 }
 
-                setIsUploading(true);
-                try {
-                    const { fileUrl, fileName } = await uploadFile(file);
-                    await sendMessage(fileName, "image", fileUrl, fileName, replyTo?.id);
-                    setReplyTo(null);
-                } catch (error) {
-                    console.error("Error uploading pasted image:", error);
-                } finally {
-                    setIsUploading(false);
-                }
+                // Create preview URL and add to pending list
+                const preview = URL.createObjectURL(file);
+                newImages.push({ file, preview });
             }
         }
+
+        if (newImages.length > 0) {
+            setPendingImages(prev => [...prev, ...newImages]);
+        }
     };
+
+    // Remove a pending image
+    const removePendingImage = (index: number) => {
+        setPendingImages(prev => {
+            const newImages = [...prev];
+            // Revoke the blob URL to free memory
+            URL.revokeObjectURL(newImages[index].preview);
+            newImages.splice(index, 1);
+            return newImages;
+        });
+    };
+
+    // Cleanup blob URLs on unmount
+    useEffect(() => {
+        return () => {
+            pendingImages.forEach(img => URL.revokeObjectURL(img.preview));
+        };
+    }, []);
 
     const handleReply = (message: any) => {
         setReplyTo(message);
@@ -274,6 +348,28 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
                     </div>
                 )}
 
+                {/* Pending Images Preview */}
+                {pendingImages.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                        {pendingImages.map((img, index) => (
+                            <div key={index} className="relative group">
+                                <img
+                                    src={img.preview}
+                                    alt={`Pending ${index + 1}`}
+                                    className="h-16 w-16 object-cover rounded border"
+                                />
+                                <button
+                                    onClick={() => removePendingImage(index)}
+                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Xóa ảnh"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <div className="flex items-end gap-2">
                     <input
                         ref={fileInputRef}
@@ -305,7 +401,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
                     <Button
                         size="icon"
                         onClick={handleSend}
-                        disabled={!input.trim() || isSending}
+                        disabled={(!input.trim() && pendingImages.length === 0) || isSending}
                     >
                         {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                     </Button>

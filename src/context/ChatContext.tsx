@@ -166,9 +166,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
         });
 
-        newSocket.on("chat:message_read", ({ conversationId, messageId }: { conversationId: number; messageId: number }) => {
-            // Update read status in UI if needed
-            console.log(`Message ${messageId} read in conversation ${conversationId}`);
+        newSocket.on("chat:message_read", ({ conversationId, userId, messageId }: { conversationId: number; userId: number; messageId: number }) => {
+            // Update our local conversation unreadCount when we receive confirmation
+            // This handles cases where mark as read was done from another tab/device
+            if (userId === user?.id) {
+                setConversations(prev => prev.map(conv =>
+                    conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
+                ));
+            }
+            console.log(`Message ${messageId} read by user ${userId} in conversation ${conversationId}`);
         });
 
         newSocket.on("chat:conversation_created", () => {
@@ -413,14 +419,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [user]);
 
     const markAsRead = useCallback(async (conversationId: number, messageId: number) => {
+        console.log('[ChatContext] markAsRead called:', { conversationId, messageId });
+
+        // Optimistic update - immediately clear unread count
+        setConversations(prev => prev.map(conv =>
+            conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
+        ));
+
         try {
             await chatApi.markAsRead(conversationId, messageId);
-            // Update conversation unread count
-            setConversations(prev => prev.map(conv =>
-                conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
-            ));
+            console.log('[ChatContext] markAsRead API success');
         } catch (error) {
             console.error("Error marking as read:", error);
+            // Could potentially revert the optimistic update here if needed
         }
     }, []);
 

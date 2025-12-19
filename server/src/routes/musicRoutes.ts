@@ -20,9 +20,15 @@ import {
     toggleShuffle,
     playAtIndex,
     onSongEnd,
-    LoopMode
+    LoopMode,
+    isOwner,
+    startVote,
+    submitVote,
+    cancelVote,
+    getVoteState,
+    VoteActionType
 } from "../services/MusicService";
-import { getIO } from "../socket";
+import { getIO, getOnlineUsersCount } from "../socket";
 
 const router = Router();
 
@@ -325,6 +331,148 @@ router.post("/ended", (req: Request, res: Response) => {
     onSongEnd();
     broadcastState();
     res.json({ success: true, state: getMusicState() });
+});
+
+// ==================== VOTING ROUTES ====================
+
+interface AuthRequest extends Request {
+    user?: { userId: number; username: string };
+}
+
+/**
+ * GET /music/vote/state
+ * Get current vote state
+ */
+router.get("/vote/state", (req: Request, res: Response) => {
+    res.json({ vote: getVoteState() });
+});
+
+/**
+ * POST /music/vote/start
+ * Start a vote for an action
+ */
+router.post("/vote/start", (req: AuthRequest, res: Response) => {
+    const { actionType, userId, username, targetIndex } = req.body;
+
+    if (!actionType || !userId || !username) {
+        return res.status(400).json({ error: "actionType, userId, and username are required" });
+    }
+
+    if (!['skip', 'previous', 'pause', 'stop', 'delete'].includes(actionType)) {
+        return res.status(400).json({ error: "Invalid action type" });
+    }
+
+    // Check if user is owner - if so, execute directly
+    if (isOwner(userId)) {
+        return res.status(400).json({ error: "Owner can execute action directly without vote" });
+    }
+
+    const onlineCount = getOnlineUsersCount();
+    const vote = startVote(actionType as VoteActionType, userId, username, onlineCount, targetIndex);
+
+    if (!vote) {
+        return res.status(400).json({ error: "A vote is already in progress" });
+    }
+
+    res.json({ success: true, vote });
+});
+
+/**
+ * POST /music/vote
+ * Submit a vote
+ */
+router.post("/vote", (req: AuthRequest, res: Response) => {
+    const { userId } = req.body;
+
+    if (!userId) {
+        return res.status(400).json({ error: "userId is required" });
+    }
+
+    const vote = submitVote(userId);
+
+    if (!vote) {
+        return res.status(400).json({ error: "No active vote" });
+    }
+
+    res.json({ success: true, vote });
+});
+
+/**
+ * POST /music/vote/cancel
+ * Cancel a vote (only initiator can cancel)
+ */
+router.post("/vote/cancel", (req: AuthRequest, res: Response) => {
+    const { userId } = req.body;
+
+    if (!userId) {
+        return res.status(400).json({ error: "userId is required" });
+    }
+
+    const success = cancelVote(userId);
+
+    if (!success) {
+        return res.status(400).json({ error: "Cannot cancel vote (not initiator or no active vote)" });
+    }
+
+    res.json({ success: true });
+});
+
+/**
+ * POST /music/action
+ * Execute an action directly (owner only) or start vote (non-owner)
+ */
+router.post("/action", (req: AuthRequest, res: Response) => {
+    const { actionType, userId, username, targetIndex } = req.body;
+
+    if (!actionType || !userId) {
+        return res.status(400).json({ error: "actionType and userId are required" });
+    }
+
+    // If user is owner, execute directly
+    if (isOwner(userId)) {
+        switch (actionType) {
+            case 'skip':
+                playNext();
+                break;
+            case 'previous':
+                playPrevious();
+                break;
+            case 'pause':
+                pauseMusic();
+                break;
+            case 'stop':
+                stopMusic();
+                break;
+            case 'delete':
+                if (targetIndex !== undefined) {
+                    removeFromQueue(targetIndex);
+                }
+                break;
+            default:
+                return res.status(400).json({ error: "Invalid action type" });
+        }
+        broadcastState();
+
+        // Broadcast action executed to all clients
+        const io = getIO();
+        io.emit("music:action_executed", {
+            actionType,
+            userId,
+            username: username || 'User'
+        });
+
+        return res.json({ success: true, executed: true, state: getMusicState() });
+    }
+
+    // Non-owner: start a vote
+    const onlineCount = getOnlineUsersCount();
+    const vote = startVote(actionType as VoteActionType, userId, username || 'User', onlineCount, targetIndex);
+
+    if (!vote) {
+        return res.status(400).json({ error: "A vote is already in progress" });
+    }
+
+    res.json({ success: true, executed: false, vote });
 });
 
 export default router;

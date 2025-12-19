@@ -3,13 +3,20 @@ import { checkJwt } from "../middlewares/checkJwt";
 import * as chatController from "../controllers/chatController";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 
 const router = Router();
 
+// Ensure upload directory exists
+const uploadDir = path.join(__dirname, "../../public/uploads/chat");
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log("Created chat upload directory:", uploadDir);
+}
 // Configure multer for image uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, "public/uploads/chat");
+        cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);

@@ -66,7 +66,21 @@ function App() {
 
         </Routes>
 
-        <Toaster position="top-center" richColors />
+        <Toaster
+          position="top-center"
+          theme="dark"
+          toastOptions={{
+            classNames: {
+              toast: 'bg-card border-border shadow-lg',
+              title: 'text-card-foreground font-semibold',
+              description: 'text-muted-foreground',
+              success: 'bg-card border-primary/50 [&_[data-icon]]:text-green-400',
+              error: 'bg-card border-destructive/50 [&_[data-icon]]:text-destructive',
+              warning: 'bg-card border-yellow-500/50 [&_[data-icon]]:text-yellow-400',
+              info: 'bg-card border-primary/50 [&_[data-icon]]:text-primary',
+            },
+          }}
+        />
       </BrowserRouter >
     </ThemeEventProvider>
   );

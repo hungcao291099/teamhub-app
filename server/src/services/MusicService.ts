@@ -61,6 +61,20 @@ export interface MusicState {
     shuffleOrder: number[];    // Shuffled indices for playback
 }
 
+export type VoteActionType = 'skip' | 'previous' | 'pause' | 'stop' | 'delete';
+
+export interface VoteState {
+    actionType: VoteActionType;
+    songTitle: string;
+    initiatorId: number;
+    initiatorName: string;
+    targetIndex?: number; // for delete action
+    votes: number[]; // user IDs who voted yes
+    requiredVotes: number;
+    startedAt: number;
+    expiresAt: number; // Auto-expire after 30 seconds
+}
+
 // In-memory music state (shared across all clients)
 let musicState: MusicState = {
     currentMusic: null,
@@ -74,17 +88,166 @@ let musicState: MusicState = {
     shuffleOrder: []
 };
 
+// Voting state
+let voteState: VoteState | null = null;
+
 // Callback for socket broadcast (set from routes)
 let onStateChange: ((state: MusicState) => void) | null = null;
+let onVoteChange: ((vote: VoteState | null, result?: 'passed' | 'failed' | 'cancelled' | 'expired') => void) | null = null;
 
 export function setOnStateChange(callback: (state: MusicState) => void) {
     onStateChange = callback;
+}
+
+export function setOnVoteChange(callback: (vote: VoteState | null, result?: 'passed' | 'failed' | 'cancelled' | 'expired') => void) {
+    onVoteChange = callback;
 }
 
 function broadcastState() {
     if (onStateChange) {
         onStateChange(getMusicState());
     }
+}
+
+function broadcastVote(result?: 'passed' | 'failed' | 'cancelled' | 'expired') {
+    if (onVoteChange) {
+        onVoteChange(voteState, result);
+    }
+}
+
+// ==================== VOTING FUNCTIONS ====================
+
+/**
+ * Check if user owns the current song
+ */
+export function isOwner(userId: number): boolean {
+    return musicState.currentMusic?.addedBy?.userId === userId;
+}
+
+/**
+ * Get current vote state
+ */
+export function getVoteState(): VoteState | null {
+    return voteState ? { ...voteState, votes: [...voteState.votes] } : null;
+}
+
+/**
+ * Start a vote for an action
+ */
+export function startVote(
+    actionType: VoteActionType,
+    userId: number,
+    username: string,
+    onlineCount: number,
+    targetIndex?: number
+): VoteState | null {
+    // Can't start vote if one is already active
+    if (voteState) {
+        return null;
+    }
+
+    // Calculate required votes (>50% of online users)
+    const requiredVotes = Math.floor(onlineCount / 2) + 1;
+
+    voteState = {
+        actionType,
+        songTitle: musicState.currentMusic?.title || "Unknown",
+        initiatorId: userId,
+        initiatorName: username,
+        targetIndex,
+        votes: [userId], // Initiator automatically votes yes
+        requiredVotes,
+        startedAt: Date.now(),
+        expiresAt: Date.now() + 30000 // 30 seconds
+    };
+
+    broadcastVote();
+
+    // Set auto-expire timer
+    setTimeout(() => {
+        if (voteState && voteState.startedAt === voteState.startedAt) {
+            clearExpiredVote();
+        }
+    }, 30000);
+
+    return voteState;
+}
+
+/**
+ * Submit a vote
+ */
+export function submitVote(userId: number): VoteState | null {
+    if (!voteState) return null;
+
+    // Already voted
+    if (voteState.votes.includes(userId)) {
+        return voteState;
+    }
+
+    voteState.votes.push(userId);
+    broadcastVote();
+
+    // Check if vote passed
+    if (voteState.votes.length >= voteState.requiredVotes) {
+        executeVoteAction();
+        const finalVote = { ...voteState, votes: [...voteState.votes] };
+        voteState = null;
+        broadcastVote('passed');
+        return finalVote;
+    }
+
+    return voteState;
+}
+
+/**
+ * Cancel a vote (only initiator can cancel)
+ */
+export function cancelVote(userId: number): boolean {
+    if (!voteState) return false;
+    if (voteState.initiatorId !== userId) return false;
+
+    voteState = null;
+    broadcastVote('cancelled');
+    return true;
+}
+
+/**
+ * Clear expired vote
+ */
+function clearExpiredVote() {
+    if (voteState && Date.now() >= voteState.expiresAt) {
+        voteState = null;
+        broadcastVote('expired');
+    }
+}
+
+/**
+ * Execute the action when vote passes
+ */
+function executeVoteAction() {
+    if (!voteState) return;
+
+    switch (voteState.actionType) {
+        case 'skip':
+            playNext();
+            break;
+        case 'previous':
+            playPrevious();
+            break;
+        case 'pause':
+            pauseMusic();
+            break;
+        case 'stop':
+            stopMusic();
+            break;
+        case 'delete':
+            if (voteState.targetIndex !== undefined) {
+                removeFromQueue(voteState.targetIndex);
+            }
+            break;
+    }
+
+    broadcastState();
 }
 
 /**
