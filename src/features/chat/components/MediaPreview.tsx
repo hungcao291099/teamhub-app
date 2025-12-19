@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
-import { X, Download, ZoomIn, ZoomOut, RotateCcw, RotateCw, FlipHorizontal, FlipVertical } from "lucide-react";
+import { X, Download, ZoomIn, ZoomOut, RotateCcw, RotateCw, FlipHorizontal, FlipVertical, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface MediaPreviewProps {
@@ -180,7 +180,7 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
                             onClick={handleResetZoom}
                             title="Đặt lại"
                         >
-                            <RotateCcw className="h-5 w-5" />
+                            <RefreshCw className="h-5 w-5" />
                         </Button>
                     </div>
                 )}
