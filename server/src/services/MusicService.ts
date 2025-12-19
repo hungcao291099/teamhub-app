@@ -30,6 +30,11 @@ function getYtDlpPath(): string {
 
 const YTDLP = getYtDlpPath();
 
+export interface AddedByInfo {
+    userId: number;
+    username: string;
+}
+
 export interface MusicInfo {
     url: string;           // Original URL
     audioUrl: string;      // Direct audio stream URL
@@ -38,13 +43,22 @@ export interface MusicInfo {
     thumbnail: string;
     platform: "youtube" | "soundcloud" | "direct";
     artist?: string;
+    addedBy?: AddedByInfo; // Who added this song
 }
+
+export type LoopMode = "off" | "one" | "all";
 
 export interface MusicState {
     currentMusic: MusicInfo | null;
     isPlaying: boolean;
     startedAt: number | null;  // Timestamp when playback started (for sync)
     pausedAt: number | null;   // Position when paused (in seconds)
+    // Queue management
+    queue: MusicInfo[];
+    currentIndex: number;
+    loopMode: LoopMode;
+    shuffleEnabled: boolean;
+    shuffleOrder: number[];    // Shuffled indices for playback
 }
 
 // In-memory music state (shared across all clients)
@@ -52,8 +66,47 @@ let musicState: MusicState = {
     currentMusic: null,
     isPlaying: false,
     startedAt: null,
-    pausedAt: null
+    pausedAt: null,
+    queue: [],
+    currentIndex: -1,
+    loopMode: "off",
+    shuffleEnabled: false,
+    shuffleOrder: []
 };
+
+// Callback for socket broadcast (set from routes)
+let onStateChange: ((state: MusicState) => void) | null = null;
+
+export function setOnStateChange(callback: (state: MusicState) => void) {
+    onStateChange = callback;
+}
+
+function broadcastState() {
+    if (onStateChange) {
+        onStateChange(getMusicState());
+    }
+}
+
+/**
+ * Generate shuffled order for queue
+ */
+function generateShuffleOrder(queueLength: number, currentIndex: number): number[] {
+    const indices = Array.from({ length: queueLength }, (_, i) => i);
+    // Fisher-Yates shuffle
+    for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    // Move current index to front if it exists
+    if (currentIndex >= 0 && currentIndex < queueLength) {
+        const pos = indices.indexOf(currentIndex);
+        if (pos > 0) {
+            indices.splice(pos, 1);
+            indices.unshift(currentIndex);
+        }
+    }
+    return indices;
+}
 
 /**
  * Detect platform from URL
@@ -151,20 +204,297 @@ export async function extractAudioInfo(url: string): Promise<MusicInfo> {
  * Get current music state
  */
 export function getMusicState(): MusicState {
-    return { ...musicState };
+    return { ...musicState, queue: [...musicState.queue] };
 }
 
 /**
- * Set new music
+ * Set new music (replaces current and clears queue)
  */
 export function setMusic(music: MusicInfo): MusicState {
     musicState = {
         currentMusic: music,
         isPlaying: true,
         startedAt: Date.now(),
-        pausedAt: null
+        pausedAt: null,
+        queue: [music],
+        currentIndex: 0,
+        loopMode: musicState.loopMode,
+        shuffleEnabled: musicState.shuffleEnabled,
+        shuffleOrder: [0]
     };
     return musicState;
+}
+
+/**
+ * Add music to queue
+ */
+export function addToQueue(music: MusicInfo): MusicState {
+    musicState.queue.push(music);
+
+    // Update shuffle order
+    if (musicState.shuffleEnabled) {
+        musicState.shuffleOrder = generateShuffleOrder(musicState.queue.length, musicState.currentIndex);
+    }
+
+    // If no music playing, start playing
+    if (!musicState.currentMusic) {
+        playAtIndex(musicState.queue.length - 1);
+    }
+
+    return musicState;
+}
+
+/**
+ * Add music to queue and play immediately
+ */
+export function addAndPlay(music: MusicInfo): MusicState {
+    musicState.queue.push(music);
+    const newIndex = musicState.queue.length - 1;
+
+    if (musicState.shuffleEnabled) {
+        musicState.shuffleOrder = generateShuffleOrder(musicState.queue.length, newIndex);
+    }
+
+    playAtIndex(newIndex);
+    return musicState;
+}
+
+/**
+ * Play music at specific index
+ */
+export function playAtIndex(index: number): MusicState {
+    if (index >= 0 && index < musicState.queue.length) {
+        musicState.currentMusic = musicState.queue[index];
+        musicState.currentIndex = index;
+        musicState.isPlaying = true;
+        musicState.startedAt = Date.now();
+        musicState.pausedAt = null;
+    }
+    return musicState;
+}
+
+/**
+ * Remove from queue
+ */
+export function removeFromQueue(index: number): MusicState {
+    if (index < 0 || index >= musicState.queue.length) {
+        return musicState;
+    }
+
+    musicState.queue.splice(index, 1);
+
+    // Adjust currentIndex
+    if (musicState.queue.length === 0) {
+        musicState.currentMusic = null;
+        musicState.currentIndex = -1;
+        musicState.isPlaying = false;
+        musicState.startedAt = null;
+        musicState.pausedAt = null;
+    } else if (index < musicState.currentIndex) {
+        musicState.currentIndex--;
+    } else if (index === musicState.currentIndex) {
+        // Current song was removed, play next or previous
+        const newIndex = Math.min(musicState.currentIndex, musicState.queue.length - 1);
+        playAtIndex(newIndex);
+    }
+
+    // Update shuffle order
+    if (musicState.shuffleEnabled) {
+        musicState.shuffleOrder = generateShuffleOrder(musicState.queue.length, musicState.currentIndex);
+    }
+
+    return musicState;
+}
+
+/**
+ * Move item in queue
+ */
+export function moveInQueue(fromIndex: number, toIndex: number): MusicState {
+    if (fromIndex < 0 || fromIndex >= musicState.queue.length ||
+        toIndex < 0 || toIndex >= musicState.queue.length) {
+        return musicState;
+    }
+
+    const [item] = musicState.queue.splice(fromIndex, 1);
+    musicState.queue.splice(toIndex, 0, item);
+
+    // Adjust currentIndex
+    if (fromIndex === musicState.currentIndex) {
+        musicState.currentIndex = toIndex;
+    } else if (fromIndex < musicState.currentIndex && toIndex >= musicState.currentIndex) {
+        musicState.currentIndex--;
+    } else if (fromIndex > musicState.currentIndex && toIndex <= musicState.currentIndex) {
+        musicState.currentIndex++;
+    }
+
+    return musicState;
+}
+
+/**
+ * Move item to top of queue (after current)
+ */
+export function moveToTop(index: number): MusicState {
+    if (index <= musicState.currentIndex || index >= musicState.queue.length) {
+        return musicState;
+    }
+
+    // Move to position right after current
+    const targetIndex = musicState.currentIndex + 1;
+    return moveInQueue(index, targetIndex);
+}
+
+/**
+ * Clear queue (keep current playing)
+ */
+export function clearQueue(): MusicState {
+    if (musicState.currentMusic && musicState.currentIndex >= 0) {
+        // Keep only current song
+        musicState.queue = [musicState.currentMusic];
+        musicState.currentIndex = 0;
+        musicState.shuffleOrder = [0];
+    } else {
+        musicState.queue = [];
+        musicState.currentIndex = -1;
+        musicState.shuffleOrder = [];
+    }
+    return musicState;
+}
+
+/**
+ * Get next index based on shuffle and loop modes
+ */
+function getNextIndex(): number {
+    if (musicState.queue.length === 0) return -1;
+
+    if (musicState.loopMode === "one") {
+        return musicState.currentIndex;
+    }
+
+    let nextIndex: number;
+
+    if (musicState.shuffleEnabled) {
+        // Find current position in shuffle order
+        const shufflePos = musicState.shuffleOrder.indexOf(musicState.currentIndex);
+        const nextShufflePos = shufflePos + 1;
+
+        if (nextShufflePos >= musicState.shuffleOrder.length) {
+            // End of shuffle order
+            if (musicState.loopMode === "all") {
+                // Regenerate shuffle and start from beginning
+                musicState.shuffleOrder = generateShuffleOrder(musicState.queue.length, -1);
+                nextIndex = musicState.shuffleOrder[0];
+            } else {
+                return -1; // End of queue
+            }
+        } else {
+            nextIndex = musicState.shuffleOrder[nextShufflePos];
+        }
+    } else {
+        nextIndex = musicState.currentIndex + 1;
+
+        if (nextIndex >= musicState.queue.length) {
+            if (musicState.loopMode === "all") {
+                nextIndex = 0;
+            } else {
+                return -1; // End of queue
+            }
+        }
+    }
+
+    return nextIndex;
+}
+
+/**
+ * Get previous index
+ */
+function getPreviousIndex(): number {
+    if (musicState.queue.length === 0) return -1;
+
+    if (musicState.shuffleEnabled) {
+        const shufflePos = musicState.shuffleOrder.indexOf(musicState.currentIndex);
+        if (shufflePos <= 0) {
+            if (musicState.loopMode === "all") {
+                return musicState.shuffleOrder[musicState.shuffleOrder.length - 1];
+            }
+            return musicState.currentIndex; // Stay at current
+        }
+        return musicState.shuffleOrder[shufflePos - 1];
+    } else {
+        if (musicState.currentIndex <= 0) {
+            if (musicState.loopMode === "all") {
+                return musicState.queue.length - 1;
+            }
+            return 0; // Stay at first
+        }
+        return musicState.currentIndex - 1;
+    }
+}
+
+/**
+ * Play next track
+ */
+export function playNext(): MusicState {
+    const nextIndex = getNextIndex();
+
+    if (nextIndex >= 0) {
+        playAtIndex(nextIndex);
+    } else {
+        // End of queue
+        musicState.isPlaying = false;
+        musicState.pausedAt = 0;
+        musicState.startedAt = null;
+    }
+
+    return musicState;
+}
+
+/**
+ * Play previous track
+ */
+export function playPrevious(): MusicState {
+    // If more than 3 seconds into song, restart current song
+    if (musicState.startedAt && musicState.isPlaying) {
+        const currentPos = (Date.now() - musicState.startedAt) / 1000;
+        if (currentPos > 3) {
+            musicState.startedAt = Date.now();
+            musicState.pausedAt = null;
+            return musicState;
+        }
+    }
+
+    const prevIndex = getPreviousIndex();
+    playAtIndex(prevIndex);
+    return musicState;
+}
+
+/**
+ * Set loop mode
+ */
+export function setLoopMode(mode: LoopMode): MusicState {
+    musicState.loopMode = mode;
+    return musicState;
+}
+
+/**
+ * Toggle shuffle
+ */
+export function toggleShuffle(): MusicState {
+    musicState.shuffleEnabled = !musicState.shuffleEnabled;
+
+    if (musicState.shuffleEnabled) {
+        musicState.shuffleOrder = generateShuffleOrder(musicState.queue.length, musicState.currentIndex);
+    } else {
+        musicState.shuffleOrder = Array.from({ length: musicState.queue.length }, (_, i) => i);
+    }
+
+    return musicState;
+}
+
+/**
+ * Called when a song ends - handles auto-play next
+ */
+export function onSongEnd(): MusicState {
+    return playNext();
 }
 
 /**
@@ -204,7 +534,12 @@ export function stopMusic(): MusicState {
         currentMusic: null,
         isPlaying: false,
         startedAt: null,
-        pausedAt: null
+        pausedAt: null,
+        queue: [],
+        currentIndex: -1,
+        loopMode: musicState.loopMode,
+        shuffleEnabled: musicState.shuffleEnabled,
+        shuffleOrder: []
     };
     return musicState;
 }

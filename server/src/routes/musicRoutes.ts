@@ -7,15 +7,35 @@ import {
     pauseMusic,
     stopMusic,
     seekMusic,
-    detectPlatform
+    detectPlatform,
+    addToQueue,
+    addAndPlay,
+    removeFromQueue,
+    moveInQueue,
+    moveToTop,
+    clearQueue,
+    playNext,
+    playPrevious,
+    setLoopMode,
+    toggleShuffle,
+    playAtIndex,
+    onSongEnd,
+    LoopMode
 } from "../services/MusicService";
 import { getIO } from "../socket";
 
 const router = Router();
 
+// Helper to broadcast state to all clients
+function broadcastState() {
+    const io = getIO();
+    const state = getMusicState();
+    io.emit("music:state", state);
+}
+
 /**
  * POST /music/set
- * Set music from URL (YouTube/SoundCloud/Direct)
+ * Set music from URL (replaces current and clears queue)
  */
 router.post("/set", async (req: Request, res: Response) => {
     try {
@@ -30,10 +50,7 @@ router.post("/set", async (req: Request, res: Response) => {
         const musicInfo = await extractAudioInfo(url);
         const state = setMusic(musicInfo);
 
-        // Broadcast to all clients
-        const io = getIO();
-        io.emit("music:state", state);
-
+        broadcastState();
         res.json({ success: true, state });
     } catch (error: any) {
         console.error("Error setting music:", error);
@@ -55,12 +72,9 @@ router.get("/current", (req: Request, res: Response) => {
  * Resume playback
  */
 router.post("/play", (req: Request, res: Response) => {
-    const state = playMusic();
-
-    const io = getIO();
-    io.emit("music:state", state);
-
-    res.json({ success: true, state });
+    playMusic();
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
 });
 
 /**
@@ -68,25 +82,19 @@ router.post("/play", (req: Request, res: Response) => {
  * Pause playback
  */
 router.post("/pause", (req: Request, res: Response) => {
-    const state = pauseMusic();
-
-    const io = getIO();
-    io.emit("music:state", state);
-
-    res.json({ success: true, state });
+    pauseMusic();
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
 });
 
 /**
  * POST /music/stop
- * Stop playback
+ * Stop playback and clear queue
  */
 router.post("/stop", (req: Request, res: Response) => {
-    const state = stopMusic();
-
-    const io = getIO();
-    io.emit("music:state", state);
-
-    res.json({ success: true, state });
+    stopMusic();
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
 });
 
 /**
@@ -100,12 +108,9 @@ router.post("/seek", (req: Request, res: Response) => {
         return res.status(400).json({ error: "Position is required" });
     }
 
-    const state = seekMusic(position);
-
-    const io = getIO();
-    io.emit("music:state", state);
-
-    res.json({ success: true, state });
+    seekMusic(position);
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
 });
 
 /**
@@ -126,6 +131,200 @@ router.post("/preview", async (req: Request, res: Response) => {
         console.error("Error previewing music:", error);
         res.status(500).json({ error: error.message || "Failed to preview music" });
     }
+});
+
+/**
+ * POST /music/queue/add
+ * Add music to queue
+ */
+router.post("/queue/add", async (req: Request, res: Response) => {
+    try {
+        const { url, userId, username } = req.body;
+
+        if (!url) {
+            return res.status(400).json({ error: "URL is required" });
+        }
+
+        const musicInfo = await extractAudioInfo(url);
+
+        // Attach user info if provided
+        if (userId && username) {
+            musicInfo.addedBy = { userId, username };
+        }
+
+        addToQueue(musicInfo);
+
+        // Broadcast state update
+        broadcastState();
+
+        // Broadcast toast notification to all clients
+        const io = getIO();
+        io.emit("music:queue_added", {
+            title: musicInfo.title,
+            addedBy: username || "Someone",
+            thumbnail: musicInfo.thumbnail
+        });
+
+        res.json({ success: true, state: getMusicState(), addedMusic: musicInfo });
+    } catch (error: any) {
+        console.error("Error adding to queue:", error);
+        res.status(500).json({ error: error.message || "Failed to add to queue" });
+    }
+});
+
+/**
+ * POST /music/queue/add-and-play
+ * Add music to queue and play immediately
+ */
+router.post("/queue/add-and-play", async (req: Request, res: Response) => {
+    try {
+        const { url } = req.body;
+
+        if (!url) {
+            return res.status(400).json({ error: "URL is required" });
+        }
+
+        const musicInfo = await extractAudioInfo(url);
+        addAndPlay(musicInfo);
+
+        broadcastState();
+        res.json({ success: true, state: getMusicState() });
+    } catch (error: any) {
+        console.error("Error adding and playing:", error);
+        res.status(500).json({ error: error.message || "Failed to add and play" });
+    }
+});
+
+/**
+ * DELETE /music/queue/:index
+ * Remove item from queue by index
+ */
+router.delete("/queue/:index", (req: Request, res: Response) => {
+    const index = parseInt(req.params.index, 10);
+
+    if (isNaN(index)) {
+        return res.status(400).json({ error: "Invalid index" });
+    }
+
+    removeFromQueue(index);
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
+});
+
+/**
+ * POST /music/queue/move
+ * Move item in queue
+ */
+router.post("/queue/move", (req: Request, res: Response) => {
+    const { from, to } = req.body;
+
+    if (typeof from !== "number" || typeof to !== "number") {
+        return res.status(400).json({ error: "from and to indices are required" });
+    }
+
+    moveInQueue(from, to);
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
+});
+
+/**
+ * POST /music/queue/move-to-top
+ * Move item to top of queue (plays next)
+ */
+router.post("/queue/move-to-top", (req: Request, res: Response) => {
+    const { index } = req.body;
+
+    if (typeof index !== "number") {
+        return res.status(400).json({ error: "index is required" });
+    }
+
+    moveToTop(index);
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
+});
+
+/**
+ * DELETE /music/queue/clear
+ * Clear queue (keeps current playing)
+ */
+router.delete("/queue/clear", (req: Request, res: Response) => {
+    clearQueue();
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
+});
+
+/**
+ * POST /music/queue/play/:index
+ * Play specific item in queue
+ */
+router.post("/queue/play/:index", (req: Request, res: Response) => {
+    const index = parseInt(req.params.index, 10);
+
+    if (isNaN(index)) {
+        return res.status(400).json({ error: "Invalid index" });
+    }
+
+    playAtIndex(index);
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
+});
+
+// ==================== PLAYBACK CONTROL ROUTES ====================
+
+/**
+ * POST /music/next
+ * Play next track
+ */
+router.post("/next", (req: Request, res: Response) => {
+    playNext();
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
+});
+
+/**
+ * POST /music/previous
+ * Play previous track
+ */
+router.post("/previous", (req: Request, res: Response) => {
+    playPrevious();
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
+});
+
+/**
+ * POST /music/loop
+ * Set loop mode (off/one/all)
+ */
+router.post("/loop", (req: Request, res: Response) => {
+    const { mode } = req.body;
+
+    if (!mode || !["off", "one", "all"].includes(mode)) {
+        return res.status(400).json({ error: "Valid mode is required (off/one/all)" });
+    }
+
+    setLoopMode(mode as LoopMode);
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
+});
+
+/**
+ * POST /music/shuffle
+ * Toggle shuffle mode
+ */
+router.post("/shuffle", (req: Request, res: Response) => {
+    toggleShuffle();
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
+});
+
+/**
+ * POST /music/ended
+ * Called when current track ends (for auto-play next)
+ */
+router.post("/ended", (req: Request, res: Response) => {
+    onSongEnd();
+    broadcastState();
+    res.json({ success: true, state: getMusicState() });
 });
 
 export default router;
