@@ -21,6 +21,9 @@ import { ThemeEffectsContainer } from "@/components/theme/ThemeEffectsContainer"
 import { ThemeEventPage } from "@/pages/ThemeEventPage";
 import { DonateOverlay } from "@/features/fund/DonateOverlay";
 import { DocumentTitleUpdater } from "@/components/common/DocumentTitleUpdater";
+import { MusicProvider } from "@/context/MusicContext";
+import { MusicFAB } from "@/components/music/MusicFAB";
+import MusicPage from "@/pages/MusicPage";
 
 function App() {
   return (
@@ -45,15 +48,19 @@ function App() {
 
           {/* Route Private */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<MainLayout />}>
-              <Route index element={<DashboardPage />} />
-              <Route path="members" element={<UsersPage />} />
-              <Route path="fund" element={<FundPage />} />
+            {/* Music Provider wraps all protected routes */}
+            <Route element={<MusicProviderWrapper />}>
+              <Route path="/" element={<MainLayout />}>
+                <Route index element={<DashboardPage />} />
+                <Route path="members" element={<UsersPage />} />
+                <Route path="fund" element={<FundPage />} />
 
-              <Route path="utilities" element={<UtilitiesPage />} />
-              <Route path="utilities/duty" element={<DutyPage />} />
-              <Route path="utilities/team-calendar" element={<TeamCalendarPage />} />
-              <Route path="utilities/theme-event" element={<ThemeEventPage />} />
+                <Route path="utilities" element={<UtilitiesPage />} />
+                <Route path="utilities/duty" element={<DutyPage />} />
+                <Route path="utilities/team-calendar" element={<TeamCalendarPage />} />
+                <Route path="utilities/theme-event" element={<ThemeEventPage />} />
+                <Route path="music" element={<MusicPage />} />
+              </Route>
             </Route>
           </Route>
 
@@ -62,6 +69,18 @@ function App() {
         <Toaster position="top-center" richColors />
       </BrowserRouter >
     </ThemeEventProvider>
+  );
+}
+
+// Wrapper component to provide MusicContext and MusicFAB
+import { Outlet } from "react-router-dom";
+
+function MusicProviderWrapper() {
+  return (
+    <MusicProvider>
+      <MusicFAB />
+      <Outlet />
+    </MusicProvider>
   );
 }
 

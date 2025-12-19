@@ -12,6 +12,7 @@ import userRoutes from "./routes/users";
 import settingsRoutes from "./routes/settings";
 import appRoutes from "./routes/app";
 import chatRoutes from "./routes/chatRoutes";
+import musicRoutes from "./routes/musicRoutes";
 import { User } from "./entities/User";
 import { initSocket } from "./socket";
 import { createServer } from "http";
@@ -36,7 +37,7 @@ app.use("/users", userRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/app", appRoutes);
 app.use("/chat", chatRoutes);
-
+app.use("/music", musicRoutes);
 
 const httpServer = createServer(app);
 

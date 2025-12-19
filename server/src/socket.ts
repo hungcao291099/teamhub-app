@@ -2,6 +2,7 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import { Server as HttpServer } from "http";
 import jwt from "jsonwebtoken";
 import config from "./config";
+import { getMusicState } from "./services/MusicService";
 
 let io: SocketIOServer;
 
@@ -57,6 +58,16 @@ export const initSocket = (httpServer: HttpServer) => {
 
         // Send current online users to newly connected user
         socket.emit("users:online", Array.from(onlineUsers));
+
+        // Send current music state to newly connected user
+        const musicState = getMusicState();
+        socket.emit("music:state", musicState);
+
+        // Music: Client requests current state
+        socket.on("music:get_state", () => {
+            socket.emit("music:state", getMusicState());
+        });
+
 
         // Chat: Join conversation rooms
         socket.on("chat:join", (conversationId: number) => {
