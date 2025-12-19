@@ -35,8 +35,6 @@ export function EditUserDialog({ user, onUserUpdated, open, onOpenChange, isAdmi
   const form = useForm({
     defaultValues: {
       name: user.name,
-      phone: user.phone || "",
-      avatar: user.avatar || "",
       role: user.role || "member",
     }
   });
@@ -45,8 +43,6 @@ export function EditUserDialog({ user, onUserUpdated, open, onOpenChange, isAdmi
     if (user) {
       form.reset({
         name: user.name,
-        phone: user.phone || "",
-        avatar: user.avatar || "",
         role: user.role || "member",
       });
     }
@@ -55,10 +51,9 @@ export function EditUserDialog({ user, onUserUpdated, open, onOpenChange, isAdmi
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      // Dùng link ảnh avatar placeholder nếu người dùng xóa trống
       const userData = {
-        ...data,
-        avatar: data.avatar || `https://i.pravatar.cc/150?u=${data.name}`,
+        name: data.name,
+        role: data.role,
       };
 
       await updateUser(user.id, userData);
@@ -108,37 +103,6 @@ export function EditUserDialog({ user, onUserUpdated, open, onOpenChange, isAdmi
                 </FormItem>
               )}
             />
-
-            {/* 🚀 SỬA 3: Refactor "Điện thoại" dùng FormField */}
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem className="grid grid-cols-4 items-center gap-x-4 gap-y-1">
-                  <FormLabel className="text-right">Điện thoại</FormLabel>
-                  <FormControl className="col-span-3">
-                    <Input id="phone" type="tel" {...field} />
-                  </FormControl>
-                  <FormMessage className="col-span-4 text-red-500 text-sm text-right" />
-                </FormItem>
-              )}
-            />
-
-            {/* 🚀 SỬA 3: Refactor "Avatar" dùng FormField */}
-            <FormField
-              control={form.control}
-              name="avatar"
-              render={({ field }) => (
-                <FormItem className="grid grid-cols-4 items-center gap-x-4 gap-y-1">
-                  <FormLabel className="text-right">Link Avatar</FormLabel>
-                  <FormControl className="col-span-3">
-                    <Input id="avatar" placeholder="Để trống..." {...field} />
-                  </FormControl>
-                  <FormMessage className="col-span-4 text-red-500 text-sm text-right" />
-                </FormItem>
-              )}
-            />
-
             {/* Khối "Role" (Đã đúng) */}
             {isAdmin && (
               <FormField
