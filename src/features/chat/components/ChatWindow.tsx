@@ -68,11 +68,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack, hideHeader, onTo
         // 2. Conversation is selected
         // 3. There are messages
         if (isChatDialogOpen && activeConversationId && messages.length > 0 && currentUser) {
-            // Find the last message from OTHER users (not from current user)
-            // This is what we need to mark as read
-            const lastOtherUserMessage = [...messages]
-                .reverse()
-                .find(msg => msg.senderId !== currentUser.id);
+            // Find messages from OTHER users (not from current user)
+            const otherUserMessages = messages.filter(m => m.senderId !== currentUser.id);
+
+            if (otherUserMessages.length === 0) return;
+
+            // Find the message with the HIGHEST ID (newest) from other users
+            // Don't use reverse().find() as array order might be inconsistent due to real-time updates
+            const lastOtherUserMessage = otherUserMessages.reduce((max, msg) =>
+                msg.id > max.id ? msg : max
+                , otherUserMessages[0]);
+
+            console.log('[ChatWindow] Highest other user message ID:', lastOtherUserMessage.id);
 
             if (lastOtherUserMessage) {
                 // Only call markAsRead if we haven't already marked this specific message

@@ -54,20 +54,37 @@ export const getConversations = async (req: Request, res: Response) => {
             }
 
             // Calculate unread count - messages after lastReadMessageId from other users
-            const unreadCount = p.lastReadMessageId
-                ? await messageRepo.count({
-                    where: {
-                        conversationId: conv.id,
-                        id: MoreThan(p.lastReadMessageId),
-                        senderId: In(otherParticipants.map(op => op.userId))
+            // Skip if no other participants (would cause SQL error with empty In())
+            let unreadCount = 0;
+            if (otherParticipants.length > 0) {
+                const otherUserIds = otherParticipants.map(op => op.userId);
+
+                if (p.lastReadMessageId) {
+                    // Find unread messages with details
+                    const unreadMessages = await messageRepo.find({
+                        where: {
+                            conversationId: conv.id,
+                            id: MoreThan(p.lastReadMessageId),
+                            senderId: In(otherUserIds)
+                        },
+                        select: ['id', 'senderId']
+                    });
+                    unreadCount = unreadMessages.length;
+
+                    if (unreadCount > 0) {
+                        console.log(`[getConversations] Conv ${conv.id}: Unread messages:`, unreadMessages.map(m => ({ id: m.id, senderId: m.senderId })));
                     }
-                })
-                : await messageRepo.count({
-                    where: {
-                        conversationId: conv.id,
-                        senderId: In(otherParticipants.map(op => op.userId))
-                    }
-                });
+                } else {
+                    unreadCount = await messageRepo.count({
+                        where: {
+                            conversationId: conv.id,
+                            senderId: In(otherUserIds)
+                        }
+                    });
+                }
+
+                console.log(`[getConversations] Conv ${conv.id}: lastReadMessageId=${p.lastReadMessageId}, unreadCount=${unreadCount}, otherUserIds=${otherUserIds.join(',')}`);
+            }
 
             return {
                 id: conv.id,
@@ -439,21 +456,55 @@ export const markAsRead = async (req: Request, res: Response) => {
         const userId = (req as any).userId;
         const { conversationId, messageId } = req.body;
 
-        await participantRepo.update(
-            { conversationId, userId },
-            { lastReadMessageId: messageId, lastReadAt: new Date() }
-        );
+        console.log('[markAsRead] Called with:', { userId, conversationId, messageId });
+
+        if (!conversationId || !messageId) {
+            console.log('[markAsRead] Missing conversationId or messageId');
+            return res.status(400).json({ error: "conversationId and messageId are required" });
+        }
+
+        // Ensure messageId is a number
+        const msgId = parseInt(messageId, 10);
+        const convId = parseInt(conversationId, 10);
+
+        if (isNaN(msgId) || isNaN(convId)) {
+            console.log('[markAsRead] Invalid conversationId or messageId (NaN)');
+            return res.status(400).json({ error: "Invalid conversationId or messageId" });
+        }
+
+        // Find the participant entry
+        const participant = await participantRepo.findOne({
+            where: { conversationId: convId, userId }
+        });
+
+        if (!participant) {
+            console.log('[markAsRead] Participant not found:', { convId, userId });
+            return res.status(404).json({ error: "Participant not found" });
+        }
+
+        console.log('[markAsRead] Current lastReadMessageId:', participant.lastReadMessageId);
+
+        // Update only if the new messageId is greater than current (avoid going backwards)
+        if (!participant.lastReadMessageId || msgId > participant.lastReadMessageId) {
+            await participantRepo.update(
+                { conversationId: convId, userId },
+                { lastReadMessageId: msgId, lastReadAt: new Date() }
+            );
+            console.log('[markAsRead] Updated lastReadMessageId to:', msgId);
+        } else {
+            console.log('[markAsRead] Skipped update - msgId not greater than current');
+        }
 
         // Emit read status
         const io = getIO();
-        const participants = await participantRepo.find({ where: { conversationId } });
+        const participants = await participantRepo.find({ where: { conversationId: convId } });
 
         participants.forEach(p => {
             if (p.userId !== userId) {
                 io.to(`user_${p.userId}_web`).emit("chat:message_read", {
-                    conversationId,
+                    conversationId: convId,
                     userId,
-                    messageId
+                    messageId: msgId
                 });
             }
         });
