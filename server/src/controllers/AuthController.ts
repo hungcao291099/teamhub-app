@@ -56,7 +56,7 @@ class AuthController {
         );
 
         // Send the jwt in the response
-        res.send({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role } });
+        res.send({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role, avatarUrl: user.avatarUrl, tokenA: user.tokenA } });
     };
 
     static createUser = async (req: Request, res: Response) => {
@@ -93,7 +93,9 @@ class AuthController {
         const userRepository = AppDataSource.getRepository(User);
         try {
             const user = await userRepository.findOneOrFail({ where: { id } });
-            res.send(user);
+            // Don't send password
+            const { password, ...userInfo } = user;
+            res.send(userInfo);
         } catch (id) {
             res.status(401).send();
         }

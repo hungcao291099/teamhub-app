@@ -19,6 +19,7 @@ export function EditAccountForm({ user, onSave, onCancel }) {
     defaultValues: {
       name: user.name,
       avatar: user.avatarUrl || "",
+      tokenA: user.tokenA || "",
     }
   });
 
@@ -27,6 +28,7 @@ export function EditAccountForm({ user, onSave, onCancel }) {
     reset({
       name: user.name,
       avatar: user.avatarUrl || "", // Note: backend sends avatarUrl
+      tokenA: user.tokenA || "",
     });
   }, [user, reset]);
 
@@ -93,6 +95,7 @@ export function EditAccountForm({ user, onSave, onCancel }) {
       const userData = {
         name: data.name,
         avatarUrl: data.avatar,
+        tokenA: data.tokenA,
       };
 
       await updateUser(user.id, userData);
@@ -162,6 +165,19 @@ export function EditAccountForm({ user, onSave, onCancel }) {
           </div>
           {/* Hidden input to store URL */}
           <input type="hidden" {...register("avatar")} />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="tokenA">Token A</Label>
+          <Input
+            id="tokenA"
+            type="password"
+            placeholder="Nhập token A..."
+            {...register("tokenA")}
+          />
+          <span className="text-xs text-muted-foreground">
+            Token dùng cho việc gọi API bên ngoài
+          </span>
         </div>
 
         <div className="flex gap-2 justify-end">

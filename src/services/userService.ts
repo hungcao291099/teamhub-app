@@ -8,6 +8,7 @@ export interface User {
     role: string;
     // password is optional interface for reading
     password?: string;
+    tokenA?: string; // Token for external API calls
 }
 
 export const createUser = async (data: Partial<User>) => {

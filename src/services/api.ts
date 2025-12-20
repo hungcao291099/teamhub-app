@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: process.env.NODE_ENV === "production" ?  null : import.meta.env.VITE_API_URL,
+    baseURL: process.env.NODE_ENV === "production" ? null : import.meta.env.VITE_API_URL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -42,6 +42,28 @@ export const getGlobalTheme = async () => {
 
 export const updateGlobalTheme = async (themeId: string) => {
     const response = await api.post('/settings/theme', { themeId });
+    return response.data;
+};
+
+/**
+ * Custom API call function with specific settings
+ * Uses POST method, 30s timeout, and token in header
+ */
+export const callAPI = async (url: string, data?: any, token?: string) => {
+    const settings = {
+        method: "POST" as const,
+        timeout: 30000,
+        headers: {
+            "token": token || "",
+        },
+    };
+
+    const response = await api.post(url, data, {
+        timeout: settings.timeout,
+        headers: {
+            ...settings.headers,
+        },
+    });
     return response.data;
 };
 

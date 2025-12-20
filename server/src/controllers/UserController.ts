@@ -31,7 +31,7 @@ class UserController {
 
     static update = async (req: Request, res: Response) => {
         const id = parseInt(req.params.id);
-        const { name, role, avatarUrl, isActive } = req.body;
+        const { name, role, avatarUrl, isActive, tokenA } = req.body;
         const userRepository = AppDataSource.getRepository(User);
         try {
             let user = await userRepository.findOneOrFail({ where: { id } });
@@ -39,6 +39,10 @@ class UserController {
             user.role = role ?? user.role;
             user.avatarUrl = avatarUrl ?? user.avatarUrl;
             user.isActive = isActive ?? user.isActive;
+            // tokenA: allow explicit update including empty string
+            if (tokenA !== undefined) {
+                user.tokenA = tokenA;
+            }
             await userRepository.save(user);
 
             // Real-time update

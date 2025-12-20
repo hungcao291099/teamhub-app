@@ -24,6 +24,7 @@ import { DocumentTitleUpdater } from "@/components/common/DocumentTitleUpdater";
 import { MusicProvider } from "@/context/MusicContext";
 import { MusicFAB } from "@/components/music/MusicFAB";
 import MusicPage from "@/pages/MusicPage";
+import { LogConsolePage } from "@/pages/LogConsolePage";
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
                 <Route path="utilities/team-calendar" element={<TeamCalendarPage />} />
                 <Route path="utilities/theme-event" element={<ThemeEventPage />} />
                 <Route path="music" element={<MusicPage />} />
+                <Route path="logs" element={<LogConsolePage />} />
               </Route>
             </Route>
           </Route>
