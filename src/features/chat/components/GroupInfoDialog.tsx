@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { chatApi } from "@/services/chatApi";
-import { Users, UserPlus, Trash2, ArrowRightLeft, MessageCircle, LogOut } from "lucide-react";
+import { Users, UserPlus, Trash2, ArrowRightLeft } from "lucide-react";
 import { AddMemberDialog } from "./AddMemberDialog";
 import { TransferOwnershipDialog } from "./TransferOwnershipDialog";
 import { ChatInfoTabs } from "./ChatInfoTabs/index";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getImageUrl } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
+
 
 interface GroupMember {
     id: number;
@@ -62,7 +62,7 @@ export const GroupInfoDialog: React.FC<GroupInfoDialogProps> = ({
         if (!conversationId) return;
 
         if (currentConversation && currentConversation.type === "direct") {
-            const partner = currentConversation.participants.find((p: any) => p.id !== currentConversation.adminId); // Assuming some logic to find partner, or just take first
+            // Partner is in the participants list for direct messages
             // Or typically in direct, participants has 2 people. 
 
             setGroupInfo({
@@ -175,8 +175,6 @@ export const GroupInfoDialog: React.FC<GroupInfoDialogProps> = ({
     // In direct messages, usually no actions like this
     const isGroup = groupInfo?.type === "group";
 
-    // Determine avatar display
-    const displayAvatar = isGroup ? groupInfo?.avatarUrl : groupInfo?.participants.find(p => p.id !== groupInfo.id /* logic check needed */)?.avatarUrl;
     // Simplified logic: stick to group info or first participant
     const avatarSrc = getImageUrl(groupInfo?.avatarUrl);
 

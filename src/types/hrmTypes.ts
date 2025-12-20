@@ -32,7 +32,8 @@ export interface CaLamViec {
 }
 
 // Generic HRM API Response wrapper
-export interface HrmApiResponse<T> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export interface HrmApiResponse<_T> {
     Status: string;
     Messenge: string;
     Data: string; // Data is JSON string that needs to be parsed

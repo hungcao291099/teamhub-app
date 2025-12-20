@@ -7,7 +7,6 @@ import {
     TooltipProvider,
     TooltipTrigger
 } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { getImageUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
