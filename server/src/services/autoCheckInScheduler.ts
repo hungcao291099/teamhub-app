@@ -257,6 +257,12 @@ async function getUserWorkShift(user: User): Promise<{ Ma: string, Code: string,
  */
 async function runScheduler(): Promise<void> {
     try {
+        // Skip Sundays (Chủ nhật) - getDay() returns 0 for Sunday
+        const now = new Date();
+        if (now.getDay() === 0) {
+            return;
+        }
+
         const userRepo = AppDataSource.getRepository(User);
 
         // Get all users with tokenA
@@ -268,7 +274,6 @@ async function runScheduler(): Promise<void> {
 
         if (users.length === 0) return;
 
-        const now = new Date();
         const currentTime = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 
         for (const user of users) {
