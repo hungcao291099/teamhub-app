@@ -30,6 +30,7 @@ export interface Message {
 export interface Conversation {
     id: number;
     name: string | null;
+    avatarUrl?: string | null;
     type: "direct" | "group";
     participants: Array<{
         id: number;
@@ -137,6 +138,7 @@ export const chatApi = {
     getGroupInfo: async (conversationId: number): Promise<{
         id: number;
         name: string | null;
+        avatarUrl: string | null;
         type: "direct" | "group";
         createdAt: string;
         participants: Array<{
@@ -172,5 +174,10 @@ export const chatApi = {
 
     deleteGroup: async (conversationId: number): Promise<void> => {
         await axios.delete(`/chat/conversations/${conversationId}`);
+    },
+
+    updateGroup: async (conversationId: number, data: { name?: string; avatarUrl?: string }): Promise<{ success: boolean; name?: string; avatarUrl?: string }> => {
+        const response = await axios.patch(`/chat/conversations/${conversationId}`, data);
+        return response.data;
     },
 };

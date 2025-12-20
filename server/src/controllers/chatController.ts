@@ -72,6 +72,7 @@ export const getConversations = async (req: Request, res: Response) => {
             return {
                 id: conv.id,
                 name: conv.name,
+                avatarUrl: conv.avatarUrl,
                 type: conv.type,
                 participants: otherParticipants.map(op => ({
                     id: op.user.id,
@@ -149,9 +150,12 @@ export const createGroupConversation = async (req: Request, res: Response) => {
         const userId = (req as any).userId;
         const { name, participantIds } = req.body;
 
-        if (!name || !participantIds || participantIds.length < 2) {
-            return res.status(400).json({ error: "Group name and at least 2 participants required" });
+        if (!name) {
+            return res.status(400).json({ error: "Group name is required" });
         }
+
+        // Ensure participantIds is an array (can be empty)
+        const memberIds = Array.isArray(participantIds) ? participantIds : [];
 
         // Create conversation
         const conversation = conversationRepo.create({
@@ -168,7 +172,7 @@ export const createGroupConversation = async (req: Request, res: Response) => {
             role: "owner"
         });
 
-        const memberParticipants = participantIds.map((pid: number) => participantRepo.create({
+        const memberParticipants = memberIds.map((pid: number) => participantRepo.create({
             conversationId: conversation.id,
             userId: pid,
             role: "member"
@@ -179,7 +183,7 @@ export const createGroupConversation = async (req: Request, res: Response) => {
 
         // Emit to all participants
         const io = getIO();
-        participantIds.forEach((pid: number) => {
+        memberIds.forEach((pid: number) => {
             io.to(`user_${pid}_web`).emit("chat:conversation_created", {
                 conversationId: conversation.id
             });
@@ -618,6 +622,7 @@ export const getGroupInfo = async (req: Request, res: Response) => {
         res.json({
             id: conversation.id,
             name: conversation.name,
+            avatarUrl: conversation.avatarUrl,
             type: conversation.type,
             createdAt: conversation.createdAt,
             participants,
@@ -930,5 +935,70 @@ export const deleteGroup = async (req: Request, res: Response) => {
     } catch (error) {
         console.error("Error deleting group:", error);
         res.status(500).json({ error: "Failed to delete group" });
+    }
+};
+
+// Update group name and avatar (owner or admin only)
+export const updateGroup = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).userId;
+        const { conversationId } = req.params;
+        const { name, avatarUrl } = req.body;
+
+        // Verify requester is admin or owner
+        const requester = await participantRepo.findOne({
+            where: { conversationId: parseInt(conversationId), userId }
+        });
+
+        if (!requester || (requester.role !== "admin" && requester.role !== "owner")) {
+            return res.status(403).json({ error: "Only admins and owners can update the group" });
+        }
+
+        // Get conversation
+        const conversation = await conversationRepo.findOne({
+            where: { id: parseInt(conversationId) }
+        });
+
+        if (!conversation) {
+            return res.status(404).json({ error: "Conversation not found" });
+        }
+
+        if (conversation.type !== "group") {
+            return res.status(400).json({ error: "Can only update group conversations" });
+        }
+
+        // Update fields
+        if (name !== undefined) {
+            conversation.name = name;
+        }
+        if (avatarUrl !== undefined) {
+            conversation.avatarUrl = avatarUrl;
+        }
+
+        await conversationRepo.save(conversation);
+
+        // Emit to all participants
+        const io = getIO();
+        const allParticipants = await participantRepo.find({
+            where: { conversationId: parseInt(conversationId) }
+        });
+
+        allParticipants.forEach(p => {
+            io.to(`user_${p.userId}_web`).emit("chat:group_updated", {
+                conversationId: parseInt(conversationId),
+                name: conversation.name,
+                avatarUrl: conversation.avatarUrl,
+                updatedBy: userId
+            });
+        });
+
+        res.json({
+            success: true,
+            name: conversation.name,
+            avatarUrl: conversation.avatarUrl
+        });
+    } catch (error) {
+        console.error("Error updating group:", error);
+        res.status(500).json({ error: "Failed to update group" });
     }
 };

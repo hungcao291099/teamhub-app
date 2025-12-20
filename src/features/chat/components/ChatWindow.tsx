@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageList } from "./MessageList";
 import { GroupInfoDialog } from "./GroupInfoDialog";
-import { ArrowLeft, Image, Send, Loader2, X, Info } from "lucide-react";
+import { ArrowLeft, Image, Send, Loader2, X, Info, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getImageUrl } from "@/lib/utils";
 import {
@@ -20,9 +20,11 @@ import {
 
 interface ChatWindowProps {
     onBack?: () => void;
+    hideHeader?: boolean;
+    onToggleInfo?: () => void;
 }
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack, hideHeader, onToggleInfo }) => {
     const {
         conversations,
         activeConversationId,
@@ -296,30 +298,51 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack }) => {
         : false;
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background">
             {/* Header */}
-            <div className="p-4 border-b flex items-center gap-3">
-                {onBack && (
-                    <Button size="icon" variant="ghost" onClick={onBack}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                )}
-                <div className="relative">
-                    <Avatar>
-                        <AvatarImage src={getImageUrl(avatarUrl) || undefined} alt={displayName || undefined} className="object-cover" />
-                        <AvatarFallback>{displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    {isOnline && (
-                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full z-10" />
-                    )}
+            {!hideHeader && (
+                <div className="h-14 px-4 border-b flex items-center justify-between shrink-0 bg-background shadow-sm z-10">
+                    <div className="flex items-center gap-3">
+                        {onBack && (
+                            <Button size="icon" variant="ghost" onClick={onBack}>
+                                <ArrowLeft className="h-5 w-5" />
+                            </Button>
+                        )}
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                {/* Only show avatar in header if NOT group? Or always? Discord shows '#' icon for text channels usually. */}
+                                <div className="h-8 w-8 flex items-center justify-center text-2xl text-muted-foreground font-bold">
+                                    {activeConversation.type === 'group' ? (
+                                        <span className="text-xl">#</span>
+                                    ) : (
+                                        <div className="relative">
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={getImageUrl(avatarUrl) || undefined} />
+                                                <AvatarFallback>{displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            {isOnline && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-background" />}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className="font-semibold flex items-center gap-2">
+                                    {displayName}
+                                    {/* {isOnline && <span className="w-2 h-2 bg-green-500 rounded-full inline-block" />} */}
+                                </h3>
+                                {/* Topic or status? */}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {/* Search? Pinned? */}
+                        <Button size="icon" variant="ghost" className="opacity-70 hover:opacity-100" onClick={onToggleInfo ? onToggleInfo : () => setGroupInfoOpen(true)}>
+                            {activeConversation.type === 'group' ? <Users className="h-5 w-5" /> : <Info className="h-5 w-5" />}
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex-1">
-                    <h3 className="font-semibold">{displayName}</h3>
-                </div>
-                <Button size="icon" variant="ghost" onClick={() => setGroupInfoOpen(true)}>
-                    <Info className="h-5 w-5" />
-                </Button>
-            </div>
+            )}
 
             {/* Messages */}
             <MessageList onReply={handleReply} />

@@ -16,6 +16,9 @@ export class Conversation {
     @Column({ nullable: true })
     lastMessageId: number | null;
 
+    @Column({ nullable: true })
+    avatarUrl: string | null; // Avatar for group chats
+
     @CreateDateColumn()
     createdAt: Date;
 

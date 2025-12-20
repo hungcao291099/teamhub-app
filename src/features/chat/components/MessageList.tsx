@@ -14,11 +14,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, MoreVertical, ChevronDown, AlertTriangle } from "lucide-react";
-import { MessageContextMenu } from "./MessageContextMenu";
+import { Loader2, ChevronDown, AlertTriangle, Smile, Reply, Trash2 } from "lucide-react";
 import { EmojiPicker } from "./EmojiPicker";
 import { Button } from "@/components/ui/button";
-import { getImageUrl } from "@/lib/utils";
+import { getImageUrl, cn } from "@/lib/utils";
 import { MediaPreview } from "./MediaPreview";
 
 // Message list component
@@ -142,48 +141,13 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
 
     const renderMessage = (message: any, index: number) => {
         const isOwn = message.senderId === currentUser?.id;
-        const showAvatar = index === 0 || messages[index - 1].senderId !== message.senderId;
+        const prevMessage = messages[index - 1];
 
-        // Calculate time difference with previous message for dynamic spacing (WhatsApp style)
-        let messageGapClass = "mb-1"; // Very tight spacing for consecutive messages
-        if (index > 0) {
-            const currentMessageTime = new Date(message.createdAt).getTime();
-            const previousMessageTime = new Date(messages[index - 1].createdAt).getTime();
-            const timeDiffInSeconds = (currentMessageTime - previousMessageTime) / 1000;
-            const sameSender = messages[index - 1].senderId === message.senderId;
-
-            // WhatsApp-style spacing:
-            // - Same sender, within 1 min: very tight (mb-1)
-            // - Different sender, within 1 min: small gap (mb-3)
-            // - More than 1 min apart: larger gap (mb-6)
-            if (timeDiffInSeconds > 60) {
-                messageGapClass = "mb-6";
-            } else if (!sameSender) {
-                messageGapClass = "mb-3";
-            }
-        } else {
-            // First message always has larger gap
-            messageGapClass = "mb-6";
-        }
-
-        // Determine if timestamp should be shown (WhatsApp style)
-        // Show timestamp only if:
-        // 1. This is the last message in the list, OR
-        // 2. Next message is from a different sender, OR
-        // 3. Next message is more than 60 seconds later
-        let showTimestamp = true;
-        if (index < messages.length - 1) {
-            const nextMessage = messages[index + 1];
-            const nextMessageTime = new Date(nextMessage.createdAt).getTime();
-            const currentMessageTime = new Date(message.createdAt).getTime();
-            const timeDiffToNext = (nextMessageTime - currentMessageTime) / 1000;
-            const sameSenderWithNext = nextMessage.senderId === message.senderId;
-
-            // Hide timestamp if next message is from same sender within 60 seconds
-            if (sameSenderWithNext && timeDiffToNext <= 60) {
-                showTimestamp = false;
-            }
-        }
+        // Determine if we should show header (Avatar + Name + Time)
+        // Show if: first message, different sender than prev, or time gap > 5 min
+        const isSameSender = prevMessage && prevMessage.senderId === message.senderId;
+        const timeDiff = prevMessage ? (new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) / 1000 : 0;
+        const showHeader = !isSameSender || timeDiff > 300; // 5 mins
 
         // Detect URLs in content
         const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -199,33 +163,51 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
         return (
             <div
                 key={message.id}
-                className={`flex gap-2 ${messageGapClass} group ${isOwn ? "flex-row-reverse" : ""}`}
-            >
-                {!isOwn && (
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage src={getImageUrl(message.senderAvatarUrl) || undefined} alt={message.senderName} />
-                        <AvatarFallback className="text-xs">
-                            {message.senderName.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
+                className={cn(
+                    "group flex pr-4 pl-4 py-0.5 hover:bg-black/5 dark:hover:bg-white/5 relative",
+                    showHeader ? "mt-4" : "mt-0.5"
                 )}
+            >
+                {/* Left Column: Avatar or Timestamp on hover (Discord style) */}
+                <div className="w-[50px] shrink-0 pt-0.5 select-none text-right pr-3">
+                    {showHeader ? (
+                        <Avatar className="h-10 w-10 cursor-pointer hover:drop-shadow-md transition-all active:scale-95">
+                            <AvatarImage src={getImageUrl(message.senderAvatarUrl) || undefined} alt={message.senderName} />
+                            <AvatarFallback>{message.senderName.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                    ) : (
+                        <span className="text-[10px] text-muted-foreground hidden group-hover:inline-block align-top mt-1">
+                            {/* Valid timestamp for consecutive messages? Usually empty or condensed time */}
+                            {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                        </span>
+                    )}
+                </div>
 
-                <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"} max-w-[70%]`}>
-                    {!isOwn && showAvatar && (
-                        <span className="text-xs text-muted-foreground mb-1">{message.senderName}</span>
+                {/* Right Column: Content */}
+                <div className="flex-1 min-w-0">
+                    {showHeader && (
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-base cursor-pointer hover:underline text-foreground">
+                                {message.senderName}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: vi })}
+                                {message.isEdited && " (đã chỉnh sửa)"}
+                            </span>
+                        </div>
                     )}
 
-                    <div className={`relative flex items-center gap-2 ${isOwn ? "flex-row-reverse" : ""}`}>
-                        <div
-                            className={`${message.type === "image" ? "p-0 bg-transparent overflow-hidden" : "rounded-lg px-4 py-2"} ${message.type !== "image"
-                                ? (isOwn ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground")
-                                : ""
-                                } ${message.isDeleted ? "italic opacity-70" : ""}`}
-                        >
+                    <div className="relative">
+                        {/* Message Content Container - No Bubble */}
+                        <div className={cn(
+                            "text-[0.95rem] leading-relaxed text-foreground/90 whitespace-pre-wrap break-words",
+                            message.isDeleted ? "italic text-muted-foreground" : ""
+                        )}>
                             {message.replyTo && (
-                                <div className={`text-xs opacity-75 border-l-2 pl-2 mb-2 ${message.type === "image" ? "bg-accent/50 p-2 rounded mb-1" : ""}`}>
-                                    <div className="font-semibold">{message.replyTo.senderName}</div>
-                                    <div className="truncate">{message.replyTo.content}</div>
+                                <div className="flex items-center gap-2 mb-1 opacity-75 text-xs">
+                                    <div className="w-8 border-t-2 border-l-2 border-muted-foreground/30 h-3 rounded-tl-md" />
+                                    <span className="font-semibold">@{message.replyTo.senderName}</span>
+                                    <span className="text-muted-foreground truncate max-w-[200px]">{message.replyTo.content}</span>
                                 </div>
                             )}
 
@@ -235,7 +217,7 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                                     <img
                                         src={message.fileUrl}
                                         alt={message.fileName || "Image"}
-                                        className="max-w-[280px] max-h-[300px] object-cover rounded-lg cursor-pointer hover:opacity-95 transition-opacity block"
+                                        className="max-w-[300px] md:max-w-[400px] max-h-[350px] object-cover rounded-lg cursor-pointer my-1 shadow-sm border"
                                         onClick={() => setSelectedMedia({
                                             url: message.fileUrl!,
                                             type: "image",
@@ -243,33 +225,35 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                                         })}
                                     />
                                 ) : message.type === "file" && message.fileUrl ? (
-                                    // Check if it's a video based on extension (basic check)
                                     /\.(mp4|webm|ogg|mov)$/i.test(message.fileName || "") ? (
                                         <div
-                                            className="cursor-pointer flex items-center gap-2 p-2 bg-black/5 rounded hover:bg-black/10 transition-colors"
+                                            className="cursor-pointer max-w-[400px] mt-1"
                                             onClick={() => setSelectedMedia({
                                                 url: message.fileUrl!,
                                                 type: "video",
                                                 fileName: message.fileName || undefined
                                             })}
                                         >
-                                            <div className="bg-slate-200 p-2 rounded-full">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-slate-700"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                            </div>
-                                            <span className="underline truncate max-w-[150px]">{message.fileName}</span>
+                                            <video src={message.fileUrl} className="w-full rounded-lg max-h-[300px]" controls={false} />
                                         </div>
                                     ) : (
                                         <a
                                             href={message.fileUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="underline flex items-center gap-2"
+                                            className="flex items-center gap-3 p-3 bg-secondary/50 rounded-md border mt-1 max-w-sm hover:bg-secondary/80 transition-colors group/file"
                                         >
-                                            📎 {message.fileName}
+                                            <div className="bg-primary/10 p-2 rounded text-primary group-hover/file:text-primary/80">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-medium text-sm truncate text-blue-500 hover:underline">{message.fileName}</div>
+                                                <div className="text-xs text-muted-foreground">Attachment</div>
+                                            </div>
                                         </a>
                                     )
                                 ) : (
-                                    <p className="whitespace-pre-wrap break-words">
+                                    <span className="">
                                         {contentParts.map((part: string, i: number) =>
                                             urlRegex.test(part) ? (
                                                 <a
@@ -277,7 +261,7 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                                                     href={part}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="underline hover:opacity-80"
+                                                    className="text-blue-500 hover:underline"
                                                 >
                                                     {part}
                                                 </a>
@@ -285,77 +269,83 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                                                 <span key={i}>{part}</span>
                                             )
                                         )}
-                                    </p>
+                                    </span>
                                 )
                             ) : (
-                                <p className="whitespace-pre-wrap break-words">
-                                    Tin nhắn đã bị xóa
-                                </p>
+                                <span>Tin nhắn đã bị xóa</span>
                             )}
                         </div>
 
-                        {/* Reactions - Display as overlay below message */}
+                        {/* Reactions */}
                         {groupedReactions && Object.keys(groupedReactions).length > 0 && (
-                            <div className={`absolute -bottom-4 ${isOwn ? "right-0" : "left-0"} flex gap-1 flex-wrap z-10`}>
+                            <div className="flex gap-1 flex-wrap mt-1">
                                 {Object.entries(groupedReactions).map(([emoji, reactions]: [string, any]) => {
                                     const hasMyReaction = reactions.some((r: any) => r.userId === currentUser?.id);
                                     const myRxn = reactions.find((r: any) => r.userId === currentUser?.id);
                                     return (
-                                        <Button
+                                        <button
                                             key={emoji}
-                                            variant="ghost"
-                                            size="sm"
                                             onClick={() => handleReaction(message.id, emoji, hasMyReaction, myRxn)}
-                                            className={`text-sm px-2 py-1 h-auto rounded-full transition-colors shadow-md border ${hasMyReaction
-                                                ? isOwn
-                                                    ? "bg-primary/80 text-primary-foreground border-primary hover:bg-primary/90" // Own message with my reaction
-                                                    : "bg-accent/80 border-accent-foreground/20 hover:bg-accent/90"   // Other's message with my reaction
-                                                : isOwn
-                                                    ? "bg-primary/60 text-primary-foreground/90 border-primary/50 hover:bg-primary/70" // Own message without my reaction
-                                                    : "bg-accent/60 border-accent-foreground/10 hover:bg-accent/70"         // Other's message without my reaction
-                                                }`}
-                                            title={reactions.map((r: any) => r.username).join(", ")}
+                                            className={cn(
+                                                "flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md border transition-all",
+                                                hasMyReaction
+                                                    ? "bg-blue-500/10 border-blue-500/50"
+                                                    : "bg-secondary/40 border-transparent hover:border-border"
+                                            )}
                                         >
-                                            {emoji} {reactions.length > 1 && reactions.length}
-                                        </Button>
+                                            <span className="scale-90">{emoji}</span>
+                                            <span className={cn("font-medium", hasMyReaction ? "text-blue-500" : "text-muted-foreground")}>
+                                                {reactions.length}
+                                            </span>
+                                        </button>
                                     );
                                 })}
                             </div>
                         )}
-                        {/* Context Menu inside flex container to sit beside message */}
-                        {!message.isDeleted && (
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
-                                <EmojiPicker onSelect={(emoji) => addReaction(message.id, emoji)}>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 mr-1">
-                                        😀
-                                    </Button>
-                                </EmojiPicker>
-                                <MessageContextMenu
-                                    isOwn={isOwn}
-                                    onReply={() => onReply?.(message)}
-                                    onDelete={() => handleDelete(message.id)}
-                                >
-                                    <Button variant="ghost" size="icon" className="h-6 w-6">
-                                        <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                </MessageContextMenu>
-                            </div>
+                    </div>
+                </div>
+
+                {/* Floating Context Menu (Discord style: Top right of message) */}
+                {!message.isDeleted && (
+                    <div className="absolute -top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm rounded-lg p-0.5 flex items-center z-10">
+                        {/* Reaction Button */}
+                        <EmojiPicker onSelect={(emoji) => addReaction(message.id, emoji)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent/50 rounded" title="Thêm reaction">
+                                <Smile className="h-4 w-4" />
+                            </Button>
+                        </EmojiPicker>
+
+                        {/* Reply Button */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-accent/50 rounded"
+                            onClick={() => onReply?.(message)}
+                            title="Trả lời"
+                        >
+                            <Reply className="h-4 w-4" />
+                        </Button>
+
+                        {/* Delete Button - Only for own messages */}
+                        {isOwn && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive rounded"
+                                onClick={() => handleDelete(message.id)}
+                                title="Xóa tin nhắn"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
                         )}
                     </div>
-                    {/* Timestamp inside message container for tighter spacing - only show for last message in sequence */}
-                    {showTimestamp && (
-                        <span className="text-xs text-muted-foreground mt-1">
-                            {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: vi })}
-                            {message.isEdited && " (đã chỉnh sửa)"}
-                        </span>
-                    )}
-                </div>
+                )}
             </div>
         );
     };
 
     return (
-        <div className="relative flex-1 overflow-hidden flex flex-col">
+        <div className="relative flex-1 overflow-hidden flex flex-col min-h-0">
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}

@@ -23,20 +23,37 @@ export const ChatInfoTabs: React.FC<ChatInfoTabsProps> = ({
 }) => {
     // Determine default tab based on type
     const defaultTab = type === "group" ? "members" : "media";
-    const gridCols = type === "group" ? "grid-cols-3" : "grid-cols-2";
 
     return (
-        <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className={`grid w-full ${gridCols}`}>
-                {/* Only show Members tab for groups */}
-                {type === "group" && <TabsTrigger value="members">Thành viên</TabsTrigger>}
-                <TabsTrigger value="media">Media</TabsTrigger>
-                <TabsTrigger value="links">Link</TabsTrigger>
-            </TabsList>
+        <Tabs defaultValue={defaultTab} className="w-full flex flex-col h-full bg-background">
+            <div className="px-6 border-b">
+                <TabsList className="w-full justify-start h-12 bg-transparent p-0 space-x-6">
+                    {type === "group" && (
+                        <TabsTrigger
+                            value="members"
+                            className="h-full rounded-none border-b-2 border-transparent px-0 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                        >
+                            Thành viên
+                        </TabsTrigger>
+                    )}
+                    <TabsTrigger
+                        value="media"
+                        className="h-full rounded-none border-b-2 border-transparent px-0 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                    >
+                        Media
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="links"
+                        className="h-full rounded-none border-b-2 border-transparent px-0 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                    >
+                        Link
+                    </TabsTrigger>
+                </TabsList>
+            </div>
 
-            <div className="mt-4 min-h-[300px]">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
                 {type === "group" && (
-                    <TabsContent value="members" className="m-0 border-none p-0 outline-none data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:slide-in-from-bottom-2 duration-500">
+                    <TabsContent value="members" className="m-0 h-full border-none p-0 outline-none animate-in fade-in-50 slide-in-from-bottom-2 duration-500">
                         <MemberList
                             participants={participants}
                             currentUserRole={currentUserRole}
@@ -49,12 +66,12 @@ export const ChatInfoTabs: React.FC<ChatInfoTabsProps> = ({
                 <TabsContent
                     value="media"
                     forceMount={true}
-                    className="m-0 border-none p-0 outline-none data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:slide-in-from-bottom-2 duration-500 data-[state=inactive]:hidden"
+                    className="m-0 h-full border-none p-0 outline-none animate-in fade-in-50 slide-in-from-bottom-2 duration-500 data-[state=inactive]:hidden"
                 >
                     <MediaList conversationId={conversationId} />
                 </TabsContent>
 
-                <TabsContent value="links" className="m-0 border-none p-0 outline-none data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:slide-in-from-bottom-2 duration-500">
+                <TabsContent value="links" className="m-0 h-full border-none p-0 outline-none animate-in fade-in-50 slide-in-from-bottom-2 duration-500">
                     <LinkList conversationId={conversationId} />
                 </TabsContent>
             </div>

@@ -72,6 +72,7 @@ router.post("/conversations/:conversationId/members", chatController.addGroupMem
 router.delete("/conversations/:conversationId/members/:targetUserId", chatController.removeGroupMember);
 router.patch("/conversations/:conversationId/members/:targetUserId/role", chatController.updateMemberRole);
 router.post("/conversations/:conversationId/transfer-ownership", chatController.transferOwnership);
+router.patch("/conversations/:conversationId", chatController.updateGroup);
 router.delete("/conversations/:conversationId", chatController.deleteGroup);
 
 

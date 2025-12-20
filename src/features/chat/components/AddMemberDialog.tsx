@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { chatApi } from "@/services/chatApi";
 import axios from "@/services/api";
 import { Search, UserPlus } from "lucide-react";
+import { getImageUrl } from "@/lib/utils";
 
 interface User {
     id: number;
@@ -113,7 +114,7 @@ export const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
                     </div>
 
                     {/* User list */}
-                    <div className="max-h-60 overflow-y-auto border rounded-md">
+                    <div className="max-h-60 overflow-y-auto pr-1">
                         {filteredUsers.length === 0 ? (
                             <div className="p-4 text-center text-muted-foreground text-sm">
                                 {users.length === 0
@@ -121,31 +122,39 @@ export const AddMemberDialog: React.FC<AddMemberDialogProps> = ({
                                     : "Không tìm thấy người dùng"}
                             </div>
                         ) : (
-                            filteredUsers.map(user => (
-                                <Button
-                                    key={user.id}
-                                    variant="ghost"
-                                    onClick={() => handleUserToggle(user.id)}
-                                    className={`w-full p-3 h-auto justify-start flex items-center gap-3 hover:bg-accent transition-colors ${selectedUserIds.includes(user.id) ? "bg-accent" : ""
-                                        }`}
-                                >
-                                    <Avatar className="h-8 w-8 relative">
-                                        <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
-                                        {onlineUsers.includes(user.id) && (
-                                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-background rounded-full" />
-                                        )}
-                                    </Avatar>
-                                    <div className="text-left flex-1">
-                                        <div className="font-medium">{user.username}</div>
-                                        {user.name && (
-                                            <div className="text-sm text-muted-foreground">{user.name}</div>
+                            filteredUsers.map(user => {
+                                const isSelected = selectedUserIds.includes(user.id);
+                                const isOnline = onlineUsers.includes(user.id);
+                                return (
+                                    <div
+                                        key={user.id}
+                                        onClick={() => handleUserToggle(user.id)}
+                                        className={`group flex items-center gap-3 w-full p-3 mb-2 rounded-xl border bg-card hover:bg-accent/50 hover:border-primary/20 hover:shadow-sm transition-all shadow-sm cursor-pointer ${isSelected ? "ring-2 ring-primary bg-primary/5 border-primary" : "border-border/50"
+                                            }`}
+                                    >
+                                        <div className="relative shrink-0">
+                                            <Avatar className="h-10 w-10 border border-background shadow-sm">
+                                                <AvatarImage src={getImageUrl(user.avatarUrl) || undefined} className="object-cover" />
+                                                <AvatarFallback className="text-sm font-semibold">{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            {isOnline && (
+                                                <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full ring-1 ring-background" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-sm truncate">{user.username}</div>
+                                            {user.name && (
+                                                <div className="text-xs text-muted-foreground truncate">{user.name}</div>
+                                            )}
+                                        </div>
+                                        {isSelected && (
+                                            <div className="shrink-0 text-primary">
+                                                <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">✓</div>
+                                            </div>
                                         )}
                                     </div>
-                                    {selectedUserIds.includes(user.id) && (
-                                        <div className="text-blue-600">✓</div>
-                                    )}
-                                </Button>
-                            ))
+                                );
+                            })
                         )}
                     </div>
 
