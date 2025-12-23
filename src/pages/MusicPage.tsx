@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { useMusic, MusicInfo, LoopMode } from "@/context/MusicContext";
 import { VotingOverlay } from "@/components/music/VotingOverlay";
+import { MusicLiveChat } from "@/components/music/MusicLiveChat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -233,178 +234,188 @@ const MusicPage: React.FC = () => {
     }, [musicState.queue, currentUser?.id, removeFromQueue, executeAction]);
 
     return (
-        <div className="container max-w-4xl mx-auto py-8 px-4">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-primary">
-                        <Music className="w-8 h-8 text-primary-foreground" />
+        <div className="flex h-[calc(100vh-4rem)]">
+            {/* Main Music Content */}
+            <div className="flex-1 overflow-auto">
+                <div className="container max-w-4xl mx-auto py-8 px-4">
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-bold flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-primary">
+                                <Music className="w-8 h-8 text-primary-foreground" />
+                            </div>
+                            Nhạc nền
+                        </h1>
+                        <p className="text-muted-foreground mt-2">Phát nhạc nền cho tất cả thành viên trong team</p>
                     </div>
-                    Nhạc nền
-                </h1>
-                <p className="text-muted-foreground mt-2">Phát nhạc nền cho tất cả thành viên trong team</p>
+
+                    {/* Add to Queue - Simple */}
+                    <Card className="mb-6">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg">Thêm nhạc vào hàng đợi</CardTitle>
+                            <CardDescription>Paste link YouTube hoặc SoundCloud</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex gap-2">
+                                <Input
+                                    placeholder="https://www.youtube.com/watch?v=... hoặc https://soundcloud.com/..."
+                                    value={url}
+                                    onChange={(e) => setUrl(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && handleAddToQueue()}
+                                    disabled={isLoading}
+                                />
+                                <Button onClick={handleAddToQueue} disabled={!url.trim() || isLoading} className="px-6">
+                                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1" />Thêm</>}
+                                </Button>
+                            </div>
+                            {error && (
+                                <div className="flex items-center gap-2 p-3 mt-3 rounded-lg bg-destructive/10 text-destructive">
+                                    <AlertCircle className="w-4 h-4" />
+                                    <span className="text-sm">{error}</span>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Now Playing */}
+                    {hasMusic && (
+                        <Card className="mb-6 overflow-hidden">
+                            <div className={cn("h-32 relative", "bg-gradient-to-br from-primary via-primary/80 to-primary/60")}>
+                                {musicState.currentMusic?.thumbnail && (
+                                    <img src={musicState.currentMusic.thumbnail} alt="Thumbnail" className="absolute inset-0 w-full h-full object-cover opacity-40 blur-sm" />
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                <div className="absolute bottom-3 left-4 right-4">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <PlatformIcon platform={musicState.currentMusic?.platform} />
+                                        {musicState.queue.length > 1 && (
+                                            <span className="text-white/70 text-xs">{musicState.currentIndex + 1} / {musicState.queue.length}</span>
+                                        )}
+                                        {musicState.currentMusic?.addedBy && (
+                                            <span className="text-white/70 text-xs flex items-center gap-1">
+                                                <User className="w-3 h-3" />
+                                                {musicState.currentMusic.addedBy.username}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <h2 className="text-xl font-bold text-white truncate">{musicState.currentMusic?.title}</h2>
+                                    {musicState.currentMusic?.artist && <p className="text-white/70 text-sm">{musicState.currentMusic.artist}</p>}
+                                </div>
+                            </div>
+
+                            <CardContent className="pt-4">
+                                {/* Progress */}
+                                <div className="mb-4">
+                                    <Slider
+                                        value={[progress]}
+                                        onValueChange={handleSeek}
+                                        max={100}
+                                        step={0.1}
+                                        className={cn("cursor-pointer", !canSeek && "opacity-50 pointer-events-none")}
+                                        disabled={!canSeek}
+                                    />
+                                    <div className="flex justify-between text-sm text-muted-foreground mt-1">
+                                        <span>{formatTime(currentTime)}</span>
+                                        <span>{formatTime(duration)}</span>
+                                    </div>
+                                </div>
+
+                                {/* Controls */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="ghost" size="icon" onClick={toggleShuffle} className={cn("h-9 w-9 rounded-full", musicState.shuffleEnabled && "text-primary")} title={musicState.shuffleEnabled ? "Shuffle On" : "Shuffle Off"}>
+                                            <Shuffle className="w-4 h-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => executeAction('previous')} disabled={isLoading || musicState.queue.length <= 1}>
+                                            <SkipBack className="w-4 h-4" />
+                                        </Button>
+                                        <Button size="lg" className={cn("h-12 w-12 rounded-full", isPlaying && "bg-primary hover:bg-primary/90")} onClick={() => isPlaying ? executeAction('pause') : play()} disabled={isLoading}>
+                                            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => executeAction('skip')} disabled={isLoading || musicState.queue.length <= 1}>
+                                            <SkipForward className="w-4 h-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" onClick={cycleLoopMode} className={cn("h-9 w-9 rounded-full", musicState.loopMode !== "off" && "text-primary")} title={`Loop: ${musicState.loopMode}`}>
+                                            {musicState.loopMode === "one" ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
+                                        </Button>
+                                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-full ml-2" onClick={() => executeAction('stop')} disabled={isLoading} title="Stop">
+                                            <Square className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+                                            {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                                        </Button>
+                                        <Slider value={[isMuted ? 0 : volume * 100]} onValueChange={([val]) => setVolume(val / 100)} max={100} step={1} className="w-24" />
+                                        <span className="text-xs text-muted-foreground w-7">{Math.round(isMuted ? 0 : volume * 100)}%</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Queue */}
+                    {musicState.queue.length > 0 && (
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <ListMusic className="w-5 h-5" />
+                                        <CardTitle>Hàng đợi</CardTitle>
+                                        <span className="text-sm text-muted-foreground">({musicState.queue.length} bài)</span>
+                                    </div>
+                                    {musicState.queue.length > 1 && (
+                                        <Button variant="ghost" size="sm" onClick={clearQueue} className="text-muted-foreground hover:text-destructive">
+                                            <Trash2 className="w-4 h-4 mr-1" />
+                                            Xóa tất cả
+                                        </Button>
+                                    )}
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                    <SortableContext items={queueIds} strategy={verticalListSortingStrategy}>
+                                        <div className="space-y-1 max-h-96 overflow-y-auto">
+                                            {musicState.queue.map((item, index) => (
+                                                <SortableQueueItem
+                                                    key={queueIds[index]}
+                                                    id={queueIds[index]}
+                                                    item={item}
+                                                    index={index}
+                                                    isPlaying={isPlaying}
+                                                    isCurrent={index === musicState.currentIndex}
+                                                    currentIndex={musicState.currentIndex}
+                                                    onRemove={() => handleRemoveFromQueue(index)}
+                                                    onMoveToTop={() => moveToTop(index)}
+                                                />
+                                            ))}
+                                        </div>
+                                    </SortableContext>
+                                </DndContext>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Empty state */}
+                    {musicState.queue.length === 0 && (
+                        <Card>
+                            <CardContent className="py-12 text-center">
+                                <Music className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                                <p className="text-muted-foreground">Chưa có bài hát nào trong hàng đợi</p>
+                                <p className="text-sm text-muted-foreground mt-1">Thêm bài hát bằng cách paste link ở trên</p>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Voting Overlay */}
+                    <VotingOverlay />
+                </div>
             </div>
 
-            {/* Add to Queue - Simple */}
-            <Card className="mb-6">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Thêm nhạc vào hàng đợi</CardTitle>
-                    <CardDescription>Paste link YouTube hoặc SoundCloud</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex gap-2">
-                        <Input
-                            placeholder="https://www.youtube.com/watch?v=... hoặc https://soundcloud.com/..."
-                            value={url}
-                            onChange={(e) => setUrl(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleAddToQueue()}
-                            disabled={isLoading}
-                        />
-                        <Button onClick={handleAddToQueue} disabled={!url.trim() || isLoading} className="px-6">
-                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1" />Thêm</>}
-                        </Button>
-                    </div>
-                    {error && (
-                        <div className="flex items-center gap-2 p-3 mt-3 rounded-lg bg-destructive/10 text-destructive">
-                            <AlertCircle className="w-4 h-4" />
-                            <span className="text-sm">{error}</span>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Now Playing */}
-            {hasMusic && (
-                <Card className="mb-6 overflow-hidden">
-                    <div className={cn("h-32 relative", "bg-gradient-to-br from-primary via-primary/80 to-primary/60")}>
-                        {musicState.currentMusic?.thumbnail && (
-                            <img src={musicState.currentMusic.thumbnail} alt="Thumbnail" className="absolute inset-0 w-full h-full object-cover opacity-40 blur-sm" />
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                        <div className="absolute bottom-3 left-4 right-4">
-                            <div className="flex items-center gap-2 mb-1">
-                                <PlatformIcon platform={musicState.currentMusic?.platform} />
-                                {musicState.queue.length > 1 && (
-                                    <span className="text-white/70 text-xs">{musicState.currentIndex + 1} / {musicState.queue.length}</span>
-                                )}
-                                {musicState.currentMusic?.addedBy && (
-                                    <span className="text-white/70 text-xs flex items-center gap-1">
-                                        <User className="w-3 h-3" />
-                                        {musicState.currentMusic.addedBy.username}
-                                    </span>
-                                )}
-                            </div>
-                            <h2 className="text-xl font-bold text-white truncate">{musicState.currentMusic?.title}</h2>
-                            {musicState.currentMusic?.artist && <p className="text-white/70 text-sm">{musicState.currentMusic.artist}</p>}
-                        </div>
-                    </div>
-
-                    <CardContent className="pt-4">
-                        {/* Progress */}
-                        <div className="mb-4">
-                            <Slider
-                                value={[progress]}
-                                onValueChange={handleSeek}
-                                max={100}
-                                step={0.1}
-                                className={cn("cursor-pointer", !canSeek && "opacity-50 pointer-events-none")}
-                                disabled={!canSeek}
-                            />
-                            <div className="flex justify-between text-sm text-muted-foreground mt-1">
-                                <span>{formatTime(currentTime)}</span>
-                                <span>{formatTime(duration)}</span>
-                            </div>
-                        </div>
-
-                        {/* Controls */}
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Button variant="ghost" size="icon" onClick={toggleShuffle} className={cn("h-9 w-9 rounded-full", musicState.shuffleEnabled && "text-primary")} title={musicState.shuffleEnabled ? "Shuffle On" : "Shuffle Off"}>
-                                    <Shuffle className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => executeAction('previous')} disabled={isLoading || musicState.queue.length <= 1}>
-                                    <SkipBack className="w-4 h-4" />
-                                </Button>
-                                <Button size="lg" className={cn("h-12 w-12 rounded-full", isPlaying && "bg-primary hover:bg-primary/90")} onClick={() => isPlaying ? executeAction('pause') : play()} disabled={isLoading}>
-                                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => executeAction('skip')} disabled={isLoading || musicState.queue.length <= 1}>
-                                    <SkipForward className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={cycleLoopMode} className={cn("h-9 w-9 rounded-full", musicState.loopMode !== "off" && "text-primary")} title={`Loop: ${musicState.loopMode}`}>
-                                    {musicState.loopMode === "one" ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
-                                </Button>
-                                <Button variant="outline" size="icon" className="h-9 w-9 rounded-full ml-2" onClick={() => executeAction('stop')} disabled={isLoading} title="Stop">
-                                    <Square className="w-3.5 h-3.5" />
-                                </Button>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
-                                    {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                                </Button>
-                                <Slider value={[isMuted ? 0 : volume * 100]} onValueChange={([val]) => setVolume(val / 100)} max={100} step={1} className="w-24" />
-                                <span className="text-xs text-muted-foreground w-7">{Math.round(isMuted ? 0 : volume * 100)}%</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Queue */}
-            {musicState.queue.length > 0 && (
-                <Card>
-                    <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <ListMusic className="w-5 h-5" />
-                                <CardTitle>Hàng đợi</CardTitle>
-                                <span className="text-sm text-muted-foreground">({musicState.queue.length} bài)</span>
-                            </div>
-                            {musicState.queue.length > 1 && (
-                                <Button variant="ghost" size="sm" onClick={clearQueue} className="text-muted-foreground hover:text-destructive">
-                                    <Trash2 className="w-4 h-4 mr-1" />
-                                    Xóa tất cả
-                                </Button>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                            <SortableContext items={queueIds} strategy={verticalListSortingStrategy}>
-                                <div className="space-y-1 max-h-96 overflow-y-auto">
-                                    {musicState.queue.map((item, index) => (
-                                        <SortableQueueItem
-                                            key={queueIds[index]}
-                                            id={queueIds[index]}
-                                            item={item}
-                                            index={index}
-                                            isPlaying={isPlaying}
-                                            isCurrent={index === musicState.currentIndex}
-                                            currentIndex={musicState.currentIndex}
-                                            onRemove={() => handleRemoveFromQueue(index)}
-                                            onMoveToTop={() => moveToTop(index)}
-                                        />
-                                    ))}
-                                </div>
-                            </SortableContext>
-                        </DndContext>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Empty state */}
-            {musicState.queue.length === 0 && (
-                <Card>
-                    <CardContent className="py-12 text-center">
-                        <Music className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">Chưa có bài hát nào trong hàng đợi</p>
-                        <p className="text-sm text-muted-foreground mt-1">Thêm bài hát bằng cách paste link ở trên</p>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Voting Overlay */}
-            <VotingOverlay />
+            {/* Live Chat Sidebar */}
+            <div className="hidden lg:block w-80 xl:w-96 h-full">
+                <MusicLiveChat className="h-full" />
+            </div>
         </div>
     );
 };

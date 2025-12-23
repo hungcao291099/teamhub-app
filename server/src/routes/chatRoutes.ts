@@ -75,6 +75,8 @@ router.post("/conversations/:conversationId/transfer-ownership", chatController.
 router.patch("/conversations/:conversationId", chatController.updateGroup);
 router.delete("/conversations/:conversationId", chatController.deleteGroup);
 
+// Music Chat - Special shared conversation
+router.get("/music-chat", chatController.getMusicChatConversation);
 
 // Upload
 router.post("/upload", upload.single("file"), (req, res) => {

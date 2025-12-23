@@ -180,4 +180,15 @@ export const chatApi = {
         const response = await axios.patch(`/chat/conversations/${conversationId}`, data);
         return response.data;
     },
+
+    // Music Chat - Special shared conversation
+    getMusicChat: async (): Promise<{
+        conversationId: number;
+        name: string;
+        participants: Array<{ id: number; username: string; name: string | null; avatarUrl: string | null }>;
+        participantCount: number;
+    }> => {
+        const response = await axios.get("/chat/music-chat");
+        return response.data;
+    },
 };

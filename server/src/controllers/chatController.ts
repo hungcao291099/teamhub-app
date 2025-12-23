@@ -94,6 +94,7 @@ export const getConversations = async (req: Request, res: Response) => {
                 participants: otherParticipants.map(op => ({
                     id: op.user.id,
                     username: op.user.username,
+                    name: op.user.name,
                     avatarUrl: op.user.avatarUrl
                 })),
                 lastMessage,
@@ -1051,5 +1052,71 @@ export const updateGroup = async (req: Request, res: Response) => {
     } catch (error) {
         console.error("Error updating group:", error);
         res.status(500).json({ error: "Failed to update group" });
+    }
+};
+
+// Music Chat - Special shared conversation for all users
+const MUSIC_CHAT_NAME = "🎵 Music Live Chat";
+
+export const getMusicChatConversation = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).userId;
+
+        // Find existing Music Chat conversation
+        let musicChat = await conversationRepo.findOne({
+            where: { name: MUSIC_CHAT_NAME, type: "group" },
+            relations: ["participants", "participants.user"]
+        });
+
+        // Create if not exists
+        if (!musicChat) {
+            musicChat = conversationRepo.create({
+                name: MUSIC_CHAT_NAME,
+                type: "group",
+                avatarUrl: null
+            });
+            await conversationRepo.save(musicChat);
+            console.log("[MusicChat] Created new Music Chat conversation:", musicChat.id);
+        }
+
+        // Check if user is already a participant
+        let userParticipant = await participantRepo.findOne({
+            where: { conversationId: musicChat.id, userId }
+        });
+
+        // Auto-join user if not participant
+        if (!userParticipant) {
+            userParticipant = participantRepo.create({
+                conversationId: musicChat.id,
+                userId,
+                role: "member"
+            });
+            await participantRepo.save(userParticipant);
+            console.log("[MusicChat] User", userId, "joined Music Chat");
+
+            // Reload conversation with updated participants
+            musicChat = await conversationRepo.findOne({
+                where: { id: musicChat.id },
+                relations: ["participants", "participants.user"]
+            });
+        }
+
+        // Get participant info for response
+        const participants = musicChat!.participants.map(p => ({
+            id: p.user.id,
+            username: p.user.username,
+            name: p.user.name,
+            avatarUrl: p.user.avatarUrl
+        }));
+
+        res.json({
+            conversationId: musicChat!.id,
+            name: musicChat!.name,
+            participants,
+            participantCount: participants.length
+        });
+    } catch (error) {
+        console.error("Error getting music chat:", error);
+        res.status(500).json({ error: "Failed to get music chat" });
     }
 };
