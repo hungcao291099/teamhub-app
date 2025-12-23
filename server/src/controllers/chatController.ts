@@ -1064,8 +1064,7 @@ export const getMusicChatConversation = async (req: Request, res: Response) => {
 
         // Find existing Music Chat conversation
         let musicChat = await conversationRepo.findOne({
-            where: { name: MUSIC_CHAT_NAME, type: "group" },
-            relations: ["participants", "participants.user"]
+            where: { name: MUSIC_CHAT_NAME, type: "group" }
         });
 
         // Create if not exists
@@ -1093,16 +1092,16 @@ export const getMusicChatConversation = async (req: Request, res: Response) => {
             });
             await participantRepo.save(userParticipant);
             console.log("[MusicChat] User", userId, "joined Music Chat");
-
-            // Reload conversation with updated participants
-            musicChat = await conversationRepo.findOne({
-                where: { id: musicChat.id },
-                relations: ["participants", "participants.user"]
-            });
         }
 
+        // Load all participants with user info
+        const allParticipants = await participantRepo.find({
+            where: { conversationId: musicChat.id },
+            relations: ["user"]
+        });
+
         // Get participant info for response
-        const participants = musicChat!.participants.map(p => ({
+        const participants = allParticipants.map(p => ({
             id: p.user.id,
             username: p.user.username,
             name: p.user.name,
@@ -1110,8 +1109,8 @@ export const getMusicChatConversation = async (req: Request, res: Response) => {
         }));
 
         res.json({
-            conversationId: musicChat!.id,
-            name: musicChat!.name,
+            conversationId: musicChat.id,
+            name: musicChat.name,
             participants,
             participantCount: participants.length
         });

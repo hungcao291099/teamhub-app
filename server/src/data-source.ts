@@ -1,4 +1,5 @@
 import { DataSource } from "typeorm"
+import * as path from "path"
 import { User } from "./entities/User"
 import { Conversation } from "./entities/Conversation"
 import { ConversationParticipant } from "./entities/ConversationParticipant"
@@ -16,9 +17,12 @@ import { AddChatEntities1765806531742 } from "./migrations/1765806531742-AddChat
 import { AddRoleToConversationParticipant1765877312504 } from "./migrations/1765877312504-AddRoleToConversationParticipant"
 import { AddAutoCheckInLog1734681200000 } from "./migrations/1734681200000-AddAutoCheckInLog"
 
+// Use absolute path to ensure same database in dev and prod
+const dbPath = path.resolve(__dirname, "../database.sqlite");
+
 export const AppDataSource = new DataSource({
     type: "sqlite",
-    database: "database.sqlite",
+    database: dbPath,
     synchronize: false, // Auto create database schema. Don't use in production!
     logging: false,
     entities: [
