@@ -1061,6 +1061,7 @@ const MUSIC_CHAT_NAME = "🎵 Music Live Chat";
 export const getMusicChatConversation = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).userId;
+        console.log("[MusicChat] Getting music chat for user:", userId);
 
         // Find existing Music Chat conversation
         let musicChat = await conversationRepo.findOne({
@@ -1100,13 +1101,17 @@ export const getMusicChatConversation = async (req: Request, res: Response) => {
             relations: ["user"]
         });
 
-        // Get participant info for response
-        const participants = allParticipants.map(p => ({
-            id: p.user.id,
-            username: p.user.username,
-            name: p.user.name,
-            avatarUrl: p.user.avatarUrl
-        }));
+        // Get participant info for response - with null safety
+        const participants = allParticipants
+            .filter(p => p.user != null) // Filter out any participants without user loaded
+            .map(p => ({
+                id: p.user.id,
+                username: p.user.username,
+                name: p.user.name,
+                avatarUrl: p.user.avatarUrl
+            }));
+
+        console.log("[MusicChat] Returning", participants.length, "participants");
 
         res.json({
             conversationId: musicChat.id,
@@ -1114,8 +1119,9 @@ export const getMusicChatConversation = async (req: Request, res: Response) => {
             participants,
             participantCount: participants.length
         });
-    } catch (error) {
-        console.error("Error getting music chat:", error);
-        res.status(500).json({ error: "Failed to get music chat" });
+    } catch (error: any) {
+        console.error("[MusicChat] Error getting music chat:", error?.message || error);
+        console.error("[MusicChat] Stack:", error?.stack);
+        res.status(500).json({ error: "Failed to get music chat", details: error?.message });
     }
 };
