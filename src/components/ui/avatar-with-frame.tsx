@@ -12,6 +12,7 @@ import frame7 from "@/assets/frame/frame7.png";
 import frame8 from "@/assets/frame/frame8.png";
 import frame9 from "@/assets/frame/frame9.png";
 import frame10 from "@/assets/frame/frame10.png";
+import frame11 from "@/assets/frame/frame11.png";
 
 // Per-frame configuration for position and scale adjustments
 // offsetX, offsetY: pixel offset from center (can be negative)
@@ -34,6 +35,7 @@ export const frameConfigs: Record<string, FrameConfig> = {
     frame8: { src: frame8, offsetX: -4, offsetY: 8, scale: 1.2 },
     frame9: { src: frame9, offsetX: 6, offsetY: 5, scale: 1.3 },
     frame10: { src: frame10, offsetX: 20, offsetY: 3, scale: 1.1 },
+    frame11: { src: frame11, offsetX: -3, offsetY: 7, scale: 2.7 },
 };
 
 // Frame map for dynamic lookup (backward compatibility)
@@ -48,6 +50,7 @@ export const frameMap: Record<string, string> = {
     frame8,
     frame9,
     frame10,
+    frame11,
 };
 
 // Frame list for selection UI
@@ -62,6 +65,7 @@ export const frameList = [
     { id: "frame8", src: frame8 },
     { id: "frame9", src: frame9 },
     { id: "frame10", src: frame10 },
+    { id: "frame11", src: frame11 },
 ];
 
 // Size presets matching common Tailwind classes
