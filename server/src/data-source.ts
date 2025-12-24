@@ -15,8 +15,10 @@ import { AutoCheckInLog } from "./entities/AutoCheckInLog"
 import { InitialSchema1765611148994 } from "./migrations/1765611148994-InitialSchema"
 import { AddChatEntities1765806531742 } from "./migrations/1765806531742-AddChatEntities"
 import { AddRoleToConversationParticipant1765877312504 } from "./migrations/1765877312504-AddRoleToConversationParticipant"
+import { AddTokenAToUser1734681078000 } from "./migrations/1734681078000-AddTokenAToUser"
 import { AddAutoCheckInLog1734681200000 } from "./migrations/1734681200000-AddAutoCheckInLog"
 import { AddSelectedFrameToUser1735004000000 } from "./migrations/1735004000000-AddSelectedFrameToUser"
+import { AddConversationAvatar1766219051705 } from "./migrations/1766219051705-AddConversationAvatar"
 
 // Use absolute path to ensure same database in dev and prod
 const dbPath = path.resolve(__dirname, "../database.sqlite");
@@ -42,8 +44,10 @@ export const AppDataSource = new DataSource({
         InitialSchema1765611148994,
         AddChatEntities1765806531742,
         AddRoleToConversationParticipant1765877312504,
+        AddTokenAToUser1734681078000,
         AddAutoCheckInLog1734681200000,
-        AddSelectedFrameToUser1735004000000
+        AddSelectedFrameToUser1735004000000,
+        AddConversationAvatar1766219051705
     ],
     subscribers: [],
 })
