@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ChevronRight, ClipboardList, CalendarDays, Loader2, Sparkles } from "lucide-react";
+import { ChevronRight, ClipboardList, CalendarDays, Loader2, Sparkles, Gamepad2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth.js";
 
 export function UtilitiesPage() {
@@ -30,6 +30,13 @@ export function UtilitiesPage() {
       title: "Lịch Sự kiện Team",
       description: "Xem và thêm các sự kiện chung của team.",
       icon: CalendarDays,
+    },
+    {
+      id: "games",
+      to: "/games",
+      title: "Trò chơi",
+      description: "Xì dách, đếm nút và các game đặt cược khác.",
+      icon: Gamepad2,
     },
   ];
 

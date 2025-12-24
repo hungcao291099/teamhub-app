@@ -26,6 +26,12 @@ import { MusicFAB } from "@/components/music/MusicFAB";
 import MusicPage from "@/pages/MusicPage";
 import { LogConsolePage } from "@/pages/LogConsolePage";
 
+// Games pages
+import { GamesLayout } from "@/pages/games/GamesLayout";
+import { GamesPage } from "@/pages/games/GamesPage";
+import { BlackjackTablesPage } from "@/pages/games/BlackjackTablesPage";
+import { BlackjackGamePage } from "@/pages/games/BlackjackGamePage";
+
 function App() {
   return (
     <ThemeEventProvider>
@@ -62,6 +68,13 @@ function App() {
                 <Route path="utilities/theme-event" element={<ThemeEventPage />} />
                 <Route path="music" element={<MusicPage />} />
                 <Route path="logs" element={<LogConsolePage />} />
+              </Route>
+
+              {/* Games routes - separate layout */}
+              <Route path="/games" element={<GamesLayout />}>
+                <Route index element={<GamesPage />} />
+                <Route path=":gameType" element={<BlackjackTablesPage />} />
+                <Route path=":gameType/:tableId" element={<BlackjackGamePage />} />
               </Route>
             </Route>
           </Route>

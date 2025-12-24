@@ -28,4 +28,7 @@ export class User {
 
     @Column({ nullable: true })
     selectedFrame: string
+
+    @Column({ type: "integer", default: 1000 })
+    credit: number
 }

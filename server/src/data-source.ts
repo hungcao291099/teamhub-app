@@ -10,6 +10,9 @@ import { DutyRotation } from "./entities/DutyRotation"
 import { FundTransaction } from "./entities/FundTransaction"
 import { GlobalSetting } from "./entities/GlobalSetting"
 import { AutoCheckInLog } from "./entities/AutoCheckInLog"
+import { CreditTransaction } from "./entities/CreditTransaction"
+import { GameTable } from "./entities/GameTable"
+import { GameTableParticipant } from "./entities/GameTableParticipant"
 
 // Import migrations
 import { InitialSchema1765611148994 } from "./migrations/1765611148994-InitialSchema"
@@ -19,6 +22,7 @@ import { AddTokenAToUser1734681078000 } from "./migrations/1734681078000-AddToke
 import { AddAutoCheckInLog1734681200000 } from "./migrations/1734681200000-AddAutoCheckInLog"
 import { AddSelectedFrameToUser1735004000000 } from "./migrations/1735004000000-AddSelectedFrameToUser"
 import { AddConversationAvatar1766219051705 } from "./migrations/1766219051705-AddConversationAvatar"
+import { AddGamesFeature1735050000000 } from "./migrations/1735050000000-AddGamesFeature"
 
 // Use absolute path to ensure same database in dev and prod
 const dbPath = path.resolve(__dirname, "../database.sqlite");
@@ -38,7 +42,10 @@ export const AppDataSource = new DataSource({
         DutyRotation,
         FundTransaction,
         GlobalSetting,
-        AutoCheckInLog
+        AutoCheckInLog,
+        CreditTransaction,
+        GameTable,
+        GameTableParticipant
     ],
     migrations: [
         InitialSchema1765611148994,
@@ -47,7 +54,8 @@ export const AppDataSource = new DataSource({
         AddTokenAToUser1734681078000,
         AddAutoCheckInLog1734681200000,
         AddSelectedFrameToUser1735004000000,
-        AddConversationAvatar1766219051705
+        AddConversationAvatar1766219051705,
+        AddGamesFeature1735050000000
     ],
     subscribers: [],
 })

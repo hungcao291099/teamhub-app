@@ -14,6 +14,7 @@ import appRoutes from "./routes/app";
 import chatRoutes from "./routes/chatRoutes";
 import musicRoutes from "./routes/musicRoutes";
 import hrmRoutes from "./routes/hrmRoutes";
+import gamesRoutes from "./routes/gamesRoutes";
 import { User } from "./entities/User";
 import { initSocket } from "./socket";
 import { createServer } from "http";
@@ -40,6 +41,7 @@ app.use("/app", appRoutes);
 app.use("/chat", chatRoutes);
 app.use("/music", musicRoutes);
 app.use("/hrm", hrmRoutes);
+app.use("/games", gamesRoutes);
 
 const httpServer = createServer(app);
 
