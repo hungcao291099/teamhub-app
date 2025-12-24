@@ -13,7 +13,30 @@ import frame8 from "@/assets/frame/frame8.png";
 import frame9 from "@/assets/frame/frame9.png";
 import frame10 from "@/assets/frame/frame10.png";
 
-// Frame map for dynamic lookup
+// Per-frame configuration for position and scale adjustments
+// offsetX, offsetY: pixel offset from center (can be negative)
+// scale: multiplier for frame size (1.0 = default, 1.1 = 10% larger, 0.9 = 10% smaller)
+interface FrameConfig {
+    src: string;
+    offsetX: number;  // Horizontal offset in pixels (positive = right, negative = left)
+    offsetY: number;  // Vertical offset in pixels (positive = down, negative = up)
+    scale: number;    // Scale multiplier (1.0 = 100%)
+}
+
+export const frameConfigs: Record<string, FrameConfig> = {
+    frame1: { src: frame1, offsetX: 0, offsetY: 0, scale: 1.3 },
+    frame2: { src: frame2, offsetX: -2, offsetY: -10, scale: 1.05 },
+    frame3: { src: frame3, offsetX: 4, offsetY: -5, scale: 1.2 },
+    frame4: { src: frame4, offsetX: 8, offsetY: 7, scale: 1.1 },
+    frame5: { src: frame5, offsetX: 5, offsetY: -7, scale: 1.2 },
+    frame6: { src: frame6, offsetX: -1, offsetY: 8, scale: 1.1 },
+    frame7: { src: frame7, offsetX: 1, offsetY: -2, scale: 1.4 },
+    frame8: { src: frame8, offsetX: -4, offsetY: 8, scale: 1.2 },
+    frame9: { src: frame9, offsetX: 6, offsetY: 5, scale: 1.3 },
+    frame10: { src: frame10, offsetX: 20, offsetY: 3, scale: 1.1 },
+};
+
+// Frame map for dynamic lookup (backward compatibility)
 export const frameMap: Record<string, string> = {
     frame1,
     frame2,
@@ -68,7 +91,12 @@ export const AvatarWithFrame = React.forwardRef<
     AvatarWithFrameProps
 >(({ frameId, size = "sm", className, children }, ref) => {
     const config = sizeConfig[size];
-    const frameSrc = frameId ? frameMap[frameId] : null;
+    const frameConfig = frameId ? frameConfigs[frameId] : null;
+
+    // Calculate final frame size with scale
+    const finalFrameSize = frameConfig
+        ? config.frameSize * frameConfig.scale
+        : config.frameSize;
 
     return (
         <div
@@ -84,21 +112,21 @@ export const AvatarWithFrame = React.forwardRef<
                 {children}
             </div>
 
-            {/* Frame overlay - higher z-index, centered on avatar */}
-            {frameSrc && (
+            {/* Frame overlay - higher z-index, centered on avatar with per-frame offset */}
+            {frameConfig && (
                 <img
-                    src={frameSrc}
+                    src={frameConfig.src}
                     alt=""
                     className="absolute z-10 pointer-events-none"
                     style={{
-                        width: `${config.frameSize}px`,
-                        height: `${config.frameSize}px`,
+                        width: `${finalFrameSize}px`,
+                        height: `${finalFrameSize}px`,
                         maxWidth: 'none', // Override global img max-width: 100%
                         objectFit: 'contain',
-                        // Center the larger frame over the avatar
+                        // Center the larger frame over the avatar with offset adjustments
                         top: '50%',
                         left: '50%',
-                        transform: 'translate(-50%, -50%)',
+                        transform: `translate(calc(-50% + ${frameConfig.offsetX}px), calc(-50% + ${frameConfig.offsetY}px))`,
                     }}
                 />
             )}
