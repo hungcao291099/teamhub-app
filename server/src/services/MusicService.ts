@@ -185,17 +185,21 @@ export function submitVote(userId: number): VoteState | null {
     }
 
     voteState.votes.push(userId);
-    broadcastVote();
 
     // Check if vote passed
     if (voteState.votes.length >= voteState.requiredVotes) {
         executeVoteAction();
         const finalVote = { ...voteState, votes: [...voteState.votes] };
         voteState = null;
-        broadcastVote('passed');
+        // Broadcast vote end with the saved final vote
+        if (onVoteChange) {
+            onVoteChange(finalVote, 'passed');
+        }
         return finalVote;
     }
 
+    // Vote not yet passed, broadcast updated state
+    broadcastVote();
     return voteState;
 }
 

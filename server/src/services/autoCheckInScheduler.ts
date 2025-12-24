@@ -2,12 +2,16 @@ import axios from "axios";
 import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
 import { AutoCheckInLog } from "../entities/AutoCheckInLog";
-import { sendAutoCheckInNotification } from "./discordNotification";
+import { sendAutoCheckInNotification, sendDiscordNotification, DiscordEmbed } from "./discordNotification";
 
 const HRM_BASE_URL = "https://hrm.hungduy.vn";
 
 // Store daily random offsets for each user (reset each day)
 const userOffsets: Map<string, { checkIn: number[], checkOut: number[], date: string }> = new Map();
+
+// Track token errors per shift period to only notify once per shift
+// Key: userId_shiftPeriod (e.g., "1_morning", "1_afternoon")
+const tokenErrorNotified: Map<string, string> = new Map(); // value is date string
 
 /**
  * Parse time from shift name
@@ -48,10 +52,10 @@ function getCheckInOutTimes(times: { hour: number, minute: number }[]): {
 }
 
 /**
- * Generate random offset between -10 and +10 minutes
+ * Generate random offset between -5 and +5 minutes
  */
 function getRandomOffset(): number {
-    return Math.floor(Math.random() * 21) - 10; // -10 to +10
+    return Math.floor(Math.random() * 21) - 5; // -5 to +5
 }
 
 /**
@@ -212,6 +216,50 @@ async function executeCheckInOut(
 }
 
 /**
+ * Determine current shift period based on hour
+ */
+function getCurrentShiftPeriod(): string {
+    const hour = new Date().getHours();
+    if (hour < 12) return "morning";
+    return "afternoon";
+}
+
+/**
+ * Send Discord notification for tokenA error (once per shift)
+ */
+async function notifyTokenError(user: User, errorMessage: string): Promise<void> {
+    const today = new Date().toISOString().split('T')[0];
+    const shiftPeriod = getCurrentShiftPeriod();
+    const key = `${user.id}_${shiftPeriod}`;
+
+    // Check if already notified for this shift period today
+    const lastNotified = tokenErrorNotified.get(key);
+    if (lastNotified === today) {
+        console.log(`[AutoCheckIn] Already notified tokenA error for ${user.username} in ${shiftPeriod} shift today`);
+        return;
+    }
+
+    // Mark as notified
+    tokenErrorNotified.set(key, today);
+
+    const embed: DiscordEmbed = {
+        title: "⚠️ Lỗi TokenA - Không lấy được ca làm việc",
+        color: 0xffa500, // Orange
+        fields: [
+            { name: "👤 User", value: user.username, inline: true },
+            { name: "⏰ Ca", value: shiftPeriod === "morning" ? "Sáng" : "Chiều", inline: true },
+            { name: "❌ Lỗi", value: errorMessage, inline: false },
+            { name: "💡 Giải pháp", value: "Kiểm tra và cập nhật lại tokenA trong profile", inline: false },
+        ],
+        timestamp: new Date().toISOString(),
+        footer: { text: "TeamHub Auto Check-in" },
+    };
+
+    await sendDiscordNotification(undefined, [embed]);
+    console.log(`[AutoCheckIn] Sent tokenA error notification for ${user.username}`);
+}
+
+/**
  * Get work shift for a user from HRM API
  */
 async function getUserWorkShift(user: User): Promise<{ Ma: string, Code: string, Ten: string } | null> {
@@ -240,14 +288,20 @@ async function getUserWorkShift(user: User): Promise<{ Ma: string, Code: string,
                 return data[0];
             } else {
                 console.log(`[AutoCheckIn] No shifts found for ${user.username}`);
+                // No shift but API returned OK - might be no schedule for today
             }
         } else {
-            console.log(`[AutoCheckIn] HRM API error for ${user.username}: ${response.data.Messenge || 'Unknown error'}`);
+            const errorMsg = response.data.Messenge || response.data.Message || 'API returned error status';
+            console.log(`[AutoCheckIn] HRM API error for ${user.username}: ${errorMsg}`);
+            // This is likely a tokenA issue - notify Discord
+            await notifyTokenError(user, errorMsg);
         }
 
         return null;
     } catch (error: any) {
         console.error(`[AutoCheckIn] Failed to get shift for ${user.username}:`, error.message);
+        // Network or auth error - notify Discord
+        await notifyTokenError(user, error.message);
         return null;
     }
 }

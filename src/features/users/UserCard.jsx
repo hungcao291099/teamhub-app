@@ -28,6 +28,8 @@ import { deleteUser } from "@/services/userService";
 import { MoreVertical, Phone } from "lucide-react";
 import { EditUserDialog } from "./EditUserDialog";
 import { getImageUrl } from "@/lib/utils";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { AvatarWithFrame } from "@/components/ui/avatar-with-frame";
 export function UserCard({ user, onUserDeleted, onUserUpdated, isAdmin, currentUserId, isOnline }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -89,14 +91,19 @@ export function UserCard({ user, onUserDeleted, onUserUpdated, isAdmin, currentU
         {/* Nội dung Card */}
         <CardHeader className="flex items-center pt-8">
           <div className="relative">
-            <img
-              src={getImageUrl(user.avatarUrl) || 'https://i.pravatar.cc/150'}
-              alt={user.name}
-              className="w-24 h-24 rounded-full mb-4 object-cover"
-            />
+            <AvatarWithFrame frameId={user.selectedFrame} size="lg">
+              <Avatar className="w-24 h-24 mb-4">
+                <AvatarImage
+                  src={getImageUrl(user.avatarUrl) || 'https://i.pravatar.cc/150'}
+                  alt={user.name}
+                  className="object-cover"
+                />
+                <AvatarFallback className="text-2xl">{user.name?.[0]}</AvatarFallback>
+              </Avatar>
+            </AvatarWithFrame>
             {/* Online indicator - only show when online */}
             {isOnline && (
-              <span className="absolute bottom-4 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse z-10"
+              <span className="absolute bottom-4 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse z-20"
                 title="Đang online" />
             )}
           </div>

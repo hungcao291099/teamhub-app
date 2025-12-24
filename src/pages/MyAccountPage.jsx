@@ -8,6 +8,7 @@ import { getCaLamViecByUser, chamCong } from "@/services/hrmApiService";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarWithFrame } from "@/components/ui/avatar-with-frame";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { LogIn, LogOut, Loader2 } from "lucide-react";
@@ -126,15 +127,17 @@ export function MyAccountPage() {
       {/* --- CARD THÔNG TIN CÁ NHÂN --- */}
       <Card className="max-w-2xl">
         <CardHeader className="flex flex-col items-center text-center">
-          <Avatar className="w-32 h-32 mb-4">
-            <AvatarImage
-              src={userData.avatarUrl || `https://i.pravatar.cc/150?u=${userData.id}`}
-              alt={userData.name}
-            />
-            <AvatarFallback className="text-5xl">
-              {userData.name?.[0]}
-            </AvatarFallback>
-          </Avatar>
+          <AvatarWithFrame frameId={userData.selectedFrame} size="xl">
+            <Avatar className="w-32 h-32 mb-4">
+              <AvatarImage
+                src={userData.avatarUrl || `https://i.pravatar.cc/150?u=${userData.id}`}
+                alt={userData.name}
+              />
+              <AvatarFallback className="text-5xl">
+                {userData.name?.[0]}
+              </AvatarFallback>
+            </Avatar>
+          </AvatarWithFrame>
           <CardTitle className="text-3xl">{userData.name}</CardTitle>
           <CardDescription>@{userData.username}</CardDescription>
         </CardHeader>

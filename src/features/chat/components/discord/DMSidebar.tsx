@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarWithFrame } from "@/components/ui/avatar-with-frame";
 import { getImageUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
@@ -13,6 +14,7 @@ interface User {
     username: string;
     name: string;
     avatarUrl: string | null;
+    selectedFrame?: string | null;
     lastLogin?: string;
 }
 
@@ -126,12 +128,14 @@ export const DMSidebar: React.FC = () => {
                             )}
                         >
                             <div className="relative shrink-0">
-                                <Avatar className="h-10 w-10 border border-background shadow-sm">
-                                    <AvatarImage src={getImageUrl(user.avatarUrl)} className="object-cover" />
-                                    <AvatarFallback className="text-sm font-semibold">{name.charAt(0).toUpperCase()}</AvatarFallback>
-                                </Avatar>
+                                <AvatarWithFrame frameId={user.selectedFrame} size="sm">
+                                    <Avatar className="h-10 w-10 border border-background shadow-sm">
+                                        <AvatarImage src={getImageUrl(user.avatarUrl)} className="object-cover" />
+                                        <AvatarFallback className="text-sm font-semibold">{name.charAt(0).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                </AvatarWithFrame>
                                 {isOnline && (
-                                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full ring-1 ring-background" />
+                                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full ring-1 ring-background z-20" />
                                 )}
                             </div>
 

@@ -6,7 +6,9 @@ interface User {
   username: string;
   name: string;
   role: string;
-  avatarUrl?: string; // Add other fields as needed
+  avatarUrl?: string;
+  tokenA?: string;
+  selectedFrame?: string;
 }
 
 interface AuthContextType {

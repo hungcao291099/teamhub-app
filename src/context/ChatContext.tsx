@@ -217,8 +217,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             refreshConversations();
         });
 
-        // Global user update (avatar/name changes)
-        newSocket.on("user:updated", (data: { userId: number; avatarUrl?: string; name?: string; username?: string }) => {
+        // Global user update (avatar/name/frame changes)
+        newSocket.on("user:updated", (data: { userId: number; avatarUrl?: string; name?: string; username?: string; selectedFrame?: string }) => {
             console.log("User updated:", data);
 
             // 1. Update participants in conversations
@@ -229,7 +229,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         return {
                             ...p,
                             avatarUrl: data.avatarUrl !== undefined ? data.avatarUrl : p.avatarUrl,
-                            // name property doesn't exist on Conversation participant type, so we skip it
+                            selectedFrame: data.selectedFrame !== undefined ? data.selectedFrame : (p as any).selectedFrame,
                             username: data.username !== undefined ? data.username : p.username
                         };
                     }
@@ -245,7 +245,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Update sender
                 if (msg.senderId === data.userId) {
                     if (data.avatarUrl !== undefined) newMsg.senderAvatarUrl = data.avatarUrl;
-                    if (data.username !== undefined) newMsg.senderName = data.username; // Or name? Message expects senderName usually as username
+                    if (data.username !== undefined) newMsg.senderName = data.username;
+                    if (data.selectedFrame !== undefined) (newMsg as any).senderSelectedFrame = data.selectedFrame;
                     changed = true;
                 }
 

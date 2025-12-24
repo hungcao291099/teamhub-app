@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarWithFrame } from "@/components/ui/avatar-with-frame";
 import { getImageUrl } from "@/lib/utils";
 import {
     DropdownMenu,
@@ -18,6 +19,7 @@ interface GroupMember {
     username: string;
     name?: string | null;
     avatarUrl?: string | null;
+    selectedFrame?: string | null;
     role: "owner" | "admin" | "member";
     joinedAt: string;
 }
@@ -90,14 +92,16 @@ export const MemberList: React.FC<MemberListProps> = ({
                     >
                         <div className="flex items-center gap-3 overflow-hidden">
                             <div className="relative w-10 h-10 shrink-0">
-                                <Avatar className="h-full w-full border border-background shadow-sm">
-                                    <AvatarImage src={getImageUrl(member.avatarUrl) || undefined} alt={member.username} className="object-cover" />
-                                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
-                                        {member.username.charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
+                                <AvatarWithFrame frameId={member.selectedFrame} size="sm">
+                                    <Avatar className="h-full w-full border border-background shadow-sm">
+                                        <AvatarImage src={getImageUrl(member.avatarUrl) || undefined} alt={member.username} className="object-cover" />
+                                        <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+                                            {member.username.charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </AvatarWithFrame>
                                 {isOnline && (
-                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full z-10 ring-1 ring-background" />
+                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full z-20 ring-1 ring-background" />
                                 )}
                             </div>
 

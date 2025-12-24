@@ -95,7 +95,8 @@ export const getConversations = async (req: Request, res: Response) => {
                     id: op.user.id,
                     username: op.user.username,
                     name: op.user.name,
-                    avatarUrl: op.user.avatarUrl
+                    avatarUrl: op.user.avatarUrl,
+                    selectedFrame: op.user.selectedFrame
                 })),
                 lastMessage,
                 unreadCount,
@@ -246,6 +247,7 @@ export const getMessages = async (req: Request, res: Response) => {
             senderId: msg.senderId,
             senderName: msg.sender.username,
             senderAvatarUrl: msg.sender.avatarUrl,
+            senderSelectedFrame: msg.sender.selectedFrame,
             content: msg.isDeleted ? "" : decrypt(msg.content),
             type: msg.type,
             fileUrl: msg.fileUrl,
@@ -331,6 +333,7 @@ export const sendMessage = async (req: Request, res: Response) => {
             senderId: fullMessage!.senderId,
             senderName: fullMessage!.sender.username,
             senderAvatarUrl: fullMessage!.sender.avatarUrl,
+            senderSelectedFrame: fullMessage!.sender.selectedFrame,
             content: decrypt(fullMessage!.content),
             type: fullMessage!.type,
             fileUrl: fullMessage!.fileUrl,
@@ -667,6 +670,7 @@ export const getGroupInfo = async (req: Request, res: Response) => {
             username: p.user.username,
             name: p.user.name,
             avatarUrl: p.user.avatarUrl,
+            selectedFrame: p.user.selectedFrame,
             role: p.role,
             joinedAt: p.joinedAt
         }));

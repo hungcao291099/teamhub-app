@@ -9,6 +9,7 @@ export interface User {
     // password is optional interface for reading
     password?: string;
     tokenA?: string; // Token for external API calls
+    selectedFrame?: string; // Avatar frame (frame1, frame2, etc.)
 }
 
 export const createUser = async (data: Partial<User>) => {

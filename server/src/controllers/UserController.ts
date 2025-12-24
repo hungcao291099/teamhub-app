@@ -8,7 +8,7 @@ class UserController {
         const userRepository = AppDataSource.getRepository(User);
         try {
             const users = await userRepository.find({
-                select: ["id", "username", "name", "avatarUrl", "role", "isActive"]
+                select: ["id", "username", "name", "avatarUrl", "role", "isActive", "selectedFrame"]
             });
             res.send(users);
         } catch (error) {
@@ -31,7 +31,7 @@ class UserController {
 
     static update = async (req: Request, res: Response) => {
         const id = parseInt(req.params.id);
-        const { name, role, avatarUrl, isActive, tokenA } = req.body;
+        const { name, role, avatarUrl, isActive, tokenA, selectedFrame } = req.body;
         const userRepository = AppDataSource.getRepository(User);
         try {
             let user = await userRepository.findOneOrFail({ where: { id } });
@@ -42,6 +42,10 @@ class UserController {
             // tokenA: allow explicit update including empty string
             if (tokenA !== undefined) {
                 user.tokenA = tokenA;
+            }
+            // selectedFrame: allow explicit update including null/empty to remove frame
+            if (selectedFrame !== undefined) {
+                user.selectedFrame = selectedFrame || null;
             }
             await userRepository.save(user);
 

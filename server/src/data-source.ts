@@ -16,6 +16,7 @@ import { InitialSchema1765611148994 } from "./migrations/1765611148994-InitialSc
 import { AddChatEntities1765806531742 } from "./migrations/1765806531742-AddChatEntities"
 import { AddRoleToConversationParticipant1765877312504 } from "./migrations/1765877312504-AddRoleToConversationParticipant"
 import { AddAutoCheckInLog1734681200000 } from "./migrations/1734681200000-AddAutoCheckInLog"
+import { AddSelectedFrameToUser1735004000000 } from "./migrations/1735004000000-AddSelectedFrameToUser"
 
 // Use absolute path to ensure same database in dev and prod
 const dbPath = path.resolve(__dirname, "../database.sqlite");
@@ -41,7 +42,8 @@ export const AppDataSource = new DataSource({
         InitialSchema1765611148994,
         AddChatEntities1765806531742,
         AddRoleToConversationParticipant1765877312504,
-        AddAutoCheckInLog1734681200000
+        AddAutoCheckInLog1734681200000,
+        AddSelectedFrameToUser1735004000000
     ],
     subscribers: [],
 })

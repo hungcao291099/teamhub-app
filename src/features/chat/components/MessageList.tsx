@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarWithFrame } from "@/components/ui/avatar-with-frame";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
@@ -171,10 +172,12 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                 {/* Left Column: Avatar or Timestamp on hover (Discord style) */}
                 <div className="w-[50px] shrink-0 pt-0.5 select-none text-right pr-3">
                     {showHeader ? (
-                        <Avatar className="h-10 w-10 cursor-pointer hover:drop-shadow-md transition-all active:scale-95">
-                            <AvatarImage src={getImageUrl(message.senderAvatarUrl) || undefined} alt={message.senderName} />
-                            <AvatarFallback>{message.senderName.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        <AvatarWithFrame frameId={(message as any).senderSelectedFrame} size="sm">
+                            <Avatar className="h-10 w-10 cursor-pointer hover:drop-shadow-md transition-all active:scale-95">
+                                <AvatarImage src={getImageUrl(message.senderAvatarUrl) || undefined} alt={message.senderName} />
+                                <AvatarFallback>{message.senderName.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                        </AvatarWithFrame>
                     ) : (
                         <span className="text-[10px] text-muted-foreground hidden group-hover:inline-block align-top mt-1">
                             {/* Valid timestamp for consecutive messages? Usually empty or condensed time */}

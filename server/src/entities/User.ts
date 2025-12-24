@@ -25,4 +25,7 @@ export class User {
 
     @Column({ nullable: true })
     tokenA: string
+
+    @Column({ nullable: true })
+    selectedFrame: string
 }

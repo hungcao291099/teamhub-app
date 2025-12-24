@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { updateUser, uploadAvatar } from "@/services/userService";
 import { AvatarCropDialog } from "./AvatarCropDialog";
-import { Camera } from "lucide-react";
+import { Camera, X } from "lucide-react";
+import { frameList, frameMap, AvatarWithFrame } from "@/components/ui/avatar-with-frame";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 // Form này được nhúng trực tiếp, không phải Dialog
 export function EditAccountForm({ user, onSave, onCancel }) {
@@ -20,6 +22,7 @@ export function EditAccountForm({ user, onSave, onCancel }) {
       name: user.name,
       avatar: user.avatarUrl || "",
       tokenA: user.tokenA || "",
+      selectedFrame: user.selectedFrame || "",
     }
   });
 
@@ -29,6 +32,7 @@ export function EditAccountForm({ user, onSave, onCancel }) {
       name: user.name,
       avatar: user.avatarUrl || "", // Note: backend sends avatarUrl
       tokenA: user.tokenA || "",
+      selectedFrame: user.selectedFrame || "",
     });
   }, [user, reset]);
 
@@ -96,6 +100,7 @@ export function EditAccountForm({ user, onSave, onCancel }) {
         name: data.name,
         avatarUrl: data.avatar,
         tokenA: data.tokenA,
+        selectedFrame: data.selectedFrame || null,
       };
 
       await updateUser(user.id, userData);
@@ -165,6 +170,61 @@ export function EditAccountForm({ user, onSave, onCancel }) {
           </div>
           {/* Hidden input to store URL */}
           <input type="hidden" {...register("avatar")} />
+        </div>
+
+        {/* Frame Selection */}
+        <div className="space-y-2">
+          <Label>Khung avatar</Label>
+          <div className="flex items-start gap-4">
+            {/* Preview */}
+            <div className="shrink-0">
+              <AvatarWithFrame frameId={watch("selectedFrame") || null} size="lg">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={currentAvatar || `https://i.pravatar.cc/150?u=${user.id}`} />
+                  <AvatarFallback className="text-2xl">{user.name?.[0]}</AvatarFallback>
+                </Avatar>
+              </AvatarWithFrame>
+            </div>
+
+            {/* Frame Grid */}
+            <div className="flex-1">
+              <div className="grid grid-cols-5 gap-2">
+                {/* No frame option */}
+                <button
+                  type="button"
+                  onClick={() => setValue("selectedFrame", "")}
+                  className={`relative w-12 h-12 rounded-lg border-2 transition-all hover:scale-105 hover:border-primary/50 flex items-center justify-center ${!watch("selectedFrame")
+                      ? "border-primary bg-primary/10 ring-2 ring-primary ring-offset-2"
+                      : "border-border bg-muted/30"
+                    }`}
+                >
+                  <X className="h-5 w-5 text-muted-foreground" />
+                </button>
+
+                {frameList.map((frame) => (
+                  <button
+                    key={frame.id}
+                    type="button"
+                    onClick={() => setValue("selectedFrame", frame.id)}
+                    className={`relative w-12 h-12 rounded-lg border-2 transition-all hover:scale-105 hover:border-primary/50 p-0.5 ${watch("selectedFrame") === frame.id
+                        ? "border-primary bg-primary/10 ring-2 ring-primary ring-offset-2"
+                        : "border-border bg-muted/30"
+                      }`}
+                  >
+                    <img
+                      src={frame.src}
+                      alt={frame.id}
+                      className="w-full h-full object-contain"
+                    />
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground mt-2 block">
+                Chọn khung để trang trí avatar
+              </span>
+            </div>
+          </div>
+          <input type="hidden" {...register("selectedFrame")} />
         </div>
 
         <div className="space-y-2">

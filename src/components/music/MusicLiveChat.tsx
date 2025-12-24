@@ -3,6 +3,7 @@ import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/hooks/useAuth";
 import { chatApi } from "@/services/chatApi";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarWithFrame } from "@/components/ui/avatar-with-frame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, MessageCircle, Users, Loader2 } from "lucide-react";
@@ -194,12 +195,14 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isOwn, formatTime })
 
     return (
         <div className="flex gap-2 py-0.5 hover:bg-muted/30 px-2 -mx-2 rounded group">
-            <Avatar className="w-8 h-8 shrink-0 mt-0.5">
-                <AvatarImage src={getImageUrl(message.senderAvatarUrl) || undefined} />
-                <AvatarFallback className="text-xs bg-primary/20 text-primary">
-                    {message.senderName?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-            </Avatar>
+            <AvatarWithFrame frameId={(message as any).senderSelectedFrame} size="xs">
+                <Avatar className="w-8 h-8 shrink-0 mt-0.5">
+                    <AvatarImage src={getImageUrl(message.senderAvatarUrl) || undefined} />
+                    <AvatarFallback className="text-xs bg-primary/20 text-primary">
+                        {message.senderName?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                </Avatar>
+            </AvatarWithFrame>
             <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
                     <span className={cn(

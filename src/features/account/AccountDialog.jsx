@@ -11,6 +11,7 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarWithFrame } from "@/components/ui/avatar-with-frame";
 import { Label } from "@/components/ui/label";
 import { LogIn, LogOut, Loader2 } from "lucide-react";
 import { EditAccountForm } from "@/features/account/EditAccountForm.jsx";
@@ -101,15 +102,17 @@ export function AccountDialog({ open, onOpenChange }) {
                 <div className="flex flex-col md:flex-row gap-6 py-4">
                     {/* Left Column: Avatar & Basic Info */}
                     <div className="flex flex-col items-center gap-4 md:w-1/3 border-r border-border pr-0 md:pr-6">
-                        <Avatar className="w-24 h-24 md:w-32 md:h-32">
-                            <AvatarImage
-                                src={currentUser.avatarUrl || `https://i.pravatar.cc/150?u=${currentUser.id}`}
-                                alt={currentUser.name}
-                            />
-                            <AvatarFallback className="text-4xl">
-                                {currentUser.name?.[0]}
-                            </AvatarFallback>
-                        </Avatar>
+                        <AvatarWithFrame frameId={currentUser.selectedFrame} size="xl">
+                            <Avatar className="w-24 h-24 md:w-32 md:h-32">
+                                <AvatarImage
+                                    src={currentUser.avatarUrl || `https://i.pravatar.cc/150?u=${currentUser.id}`}
+                                    alt={currentUser.name}
+                                />
+                                <AvatarFallback className="text-4xl">
+                                    {currentUser.name?.[0]}
+                                </AvatarFallback>
+                            </Avatar>
+                        </AvatarWithFrame>
                         <div className="text-center">
                             <h3 className="text-xl font-semibold">{currentUser.name}</h3>
                             <p className="text-sm text-muted-foreground">@{currentUser.username}</p>
