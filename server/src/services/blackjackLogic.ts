@@ -24,6 +24,7 @@ export interface GameState {
     currentTurn: number | 'finished';
     turnOrder: number[]; // Player order (dealer is LAST)
     immediateWinners: number[]; // Players with Sỏ bàng/Sỏ dép
+    dealerInstantWin: boolean; // Dealer has Sỏ bàng/Sỏ dép - all players lose
     turnStartTime?: number; // For timeout
 }
 
@@ -121,6 +122,7 @@ export function canStand(hand: Hand): boolean {
 // Deal initial 2 cards to each player (including dealer)
 export function dealInitialCards(state: GameState, playerIds: number[], dealerId: number): void {
     state.immediateWinners = [];
+    state.dealerInstantWin = false;
     state.dealerId = dealerId;
 
     // Deal 2 cards to each player (including dealer)
@@ -130,12 +132,26 @@ export function dealInitialCards(state: GameState, playerIds: number[], dealerId
         cards.push(drawCard(state.deck)!);
         state.players[playerId] = evaluateHand(cards);
 
-        // Check instant win (Sỏ bàng or Sỏ dép) - except dealer
-        if (playerId !== dealerId) {
+        // Check instant win (Sỏ bàng or Sỏ dép)
+        if (playerId === dealerId) {
+            // Dealer instant win - all players lose
+            if (state.players[playerId].isDoubleAce || state.players[playerId].isBlackjack) {
+                state.dealerInstantWin = true;
+            }
+        } else {
+            // Player instant win
             if (state.players[playerId].isDoubleAce || state.players[playerId].isBlackjack) {
                 state.immediateWinners.push(playerId);
             }
         }
+    }
+
+    // If dealer has instant win, game ends immediately
+    if (state.dealerInstantWin) {
+        state.turnOrder = [];
+        state.currentTurn = 'finished';
+        state.turnStartTime = Date.now();
+        return;
     }
 
     // Set turn order: non-dealers first, then dealer last
@@ -245,4 +261,107 @@ export function getResultDescription(playerHand: Hand, dealerHand: Hand, winning
     if (winnings > 0) return 'Thắng! 💰';
     if (winnings < 0) return 'Thua! 😔';
     return 'Hòa! 🤝';
+}
+
+// ========== SECURITY HELPERS ==========
+
+// Masked hand - shown to other players (no card details)
+export interface MaskedHand {
+    cardCount: number;
+    hidden: true;
+    // Show these only after game ends or for special wins
+    score?: number;
+    isBlackjack?: boolean;
+    isDoubleAce?: boolean;
+    isFiveCard?: boolean;
+    isBusted?: boolean;
+}
+
+// Safe game state for transmission (no deck)
+export interface SafeGameState {
+    dealerId: number;
+    currentTurn: number | 'finished';
+    turnOrder: number[];
+    immediateWinners: number[];
+    dealerInstantWin: boolean;
+    turnStartTime?: number;
+    results?: any[];
+    // Players with their hands (full for self, masked for others)
+    players: { [userId: number]: Hand | MaskedHand };
+}
+
+// Get game state without deck (never send deck to client)
+export function getSafeGameState(state: GameState): SafeGameState {
+    return {
+        dealerId: state.dealerId,
+        currentTurn: state.currentTurn,
+        turnOrder: state.turnOrder,
+        immediateWinners: state.immediateWinners,
+        dealerInstantWin: state.dealerInstantWin,
+        turnStartTime: state.turnStartTime,
+        players: state.players
+    };
+}
+
+// Mask a hand (hide card details)
+export function maskHand(hand: Hand, showScore: boolean = false): MaskedHand {
+    return {
+        cardCount: hand.cards.length,
+        hidden: true,
+        score: showScore ? hand.score : undefined,
+        isBlackjack: showScore ? hand.isBlackjack : undefined,
+        isDoubleAce: showScore ? hand.isDoubleAce : undefined,
+        isFiveCard: showScore ? hand.isFiveCard : undefined,
+        isBusted: showScore ? hand.isBusted : undefined
+    };
+}
+
+// Filter game state for a specific user
+// - User sees their own full hand
+// - Other players' hands are masked
+// - Dealer's first card is visible, second is hidden (until game ends)
+export function filterStateForUser(
+    state: GameState,
+    userId: number,
+    gameFinished: boolean = false
+): SafeGameState {
+    const safe = getSafeGameState(state);
+    const filteredPlayers: { [userId: number]: Hand | MaskedHand } = {};
+
+    for (const [playerIdStr, hand] of Object.entries(state.players)) {
+        const playerId = parseInt(playerIdStr);
+
+        if (playerId === userId) {
+            // User sees their own full hand
+            filteredPlayers[playerId] = hand;
+        } else if (gameFinished) {
+            // Game finished - reveal all hands
+            filteredPlayers[playerId] = hand;
+        } else if (state.immediateWinners.includes(playerId)) {
+            // Immediate winner - show their winning hand
+            filteredPlayers[playerId] = hand;
+        } else if (playerId === state.dealerId) {
+            // Dealer - show first card only, mask second
+            const dealerCards = hand.cards;
+            if (dealerCards.length >= 2) {
+                filteredPlayers[playerId] = {
+                    cards: [dealerCards[0], { suit: 'spades', rank: '?', value: 0 }],
+                    score: dealerCards[0].value,
+                    isBusted: false,
+                    isBlackjack: false,
+                    isDoubleAce: false,
+                    isFiveCard: false,
+                    isNon: false
+                };
+            } else {
+                filteredPlayers[playerId] = hand;
+            }
+        } else {
+            // Other player - mask completely
+            filteredPlayers[playerId] = maskHand(hand);
+        }
+    }
+
+    safe.players = filteredPlayers;
+    return safe;
 }

@@ -165,3 +165,54 @@ export const emitForceLogout = (userId: number, clientType: string = 'web') => {
     // Emit to the user's personal room for the specific client type
     io.to(`user_${userId}_${clientType}`).emit("auth:force_logout", { reason: "Password reset or Session revoked" });
 };
+
+// ========== GAME SOCKET HELPERS ==========
+
+// Join a game table room
+export const joinGameTable = (socketId: string, tableId: number) => {
+    if (!io) return;
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket) {
+        socket.join(`game_table_${tableId}`);
+    }
+};
+
+// Leave a game table room
+export const leaveGameTable = (socketId: string, tableId: number) => {
+    if (!io) return;
+    const socket = io.sockets.sockets.get(socketId);
+    if (socket) {
+        socket.leave(`game_table_${tableId}`);
+    }
+};
+
+// Emit to all users in a game table
+export const emitToGameTable = (tableId: number, event: string, data: any) => {
+    if (!io) return;
+    io.to(`game_table_${tableId}`).emit(event, data);
+};
+
+// Emit personalized data to each user in a game (for secure card transmission)
+// dataBuilder is a function that takes userId and returns the data for that user
+export const emitToEachGameUser = async (
+    tableId: number,
+    event: string,
+    userIds: number[],
+    dataBuilder: (userId: number) => any
+) => {
+    if (!io) return;
+
+    // For each user, emit their personalized data to their user room
+    for (const userId of userIds) {
+        const userData = dataBuilder(userId);
+        // Emit to both web and app client types
+        io.to(`user_${userId}_web`).emit(event, userData);
+        io.to(`user_${userId}_app`).emit(event, userData);
+    }
+};
+
+// Emit same data to all game users (for non-sensitive events)
+export const emitToAllGameUsers = (tableId: number, event: string, data: any) => {
+    if (!io) return;
+    io.to(`game_table_${tableId}`).emit(event, data);
+};

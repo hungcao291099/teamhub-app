@@ -4,7 +4,7 @@ import { User } from "../entities/User"
 import { CreditTransaction } from "../entities/CreditTransaction"
 import { GameTable } from "../entities/GameTable"
 import { GameTableParticipant } from "../entities/GameTableParticipant"
-import { getIO } from "../socket"
+import { getIO, emitToEachGameUser } from "../socket"
 import { checkJwt } from "../middlewares/checkJwt"
 
 const router = Router()
@@ -175,6 +175,9 @@ router.get("/tables/:gameType", async (req: any, res) => {
 // GET /games/tables/:gameType/:tableId - Get single table with details
 router.get("/tables/:gameType/:tableId", async (req: any, res) => {
     try {
+        const user = await getUserFromResponse(res)
+        if (!user) return res.status(401).json({ error: "Unauthorized" })
+
         const { tableId } = req.params
         const tableIdNum = parseInt(tableId)
 
@@ -200,21 +203,58 @@ router.get("/tables/:gameType/:tableId", async (req: any, res) => {
             relations: ["user"]
         })
 
-        res.json({
-            ...table,
-            participants: participants.map(p => ({
+        // Parse game state and filter for current user
+        let safeGameState: any = null
+        if (table.gameState) {
+            try {
+                const fullState = JSON.parse(table.gameState)
+                const isFinished = table.status === "finished"
+                // Filter state: remove deck, mask other players' cards
+                safeGameState = blackjack.filterStateForUser(fullState, user.id, isFinished)
+            } catch (e) {
+                safeGameState = null
+            }
+        }
+
+        // Filter participant hands per user
+        const filteredParticipants = participants.map(p => {
+            let filteredHand: any = null
+            if (p.handState) {
+                try {
+                    const hand = JSON.parse(p.handState)
+                    const isFinished = table.status === "finished"
+                    // User sees their own full hand, others are masked
+                    if (p.userId === user.id || isFinished) {
+                        filteredHand = hand
+                    } else {
+                        filteredHand = blackjack.maskHand(hand)
+                    }
+                } catch (e) {
+                    filteredHand = null
+                }
+            }
+
+            return {
                 id: p.id,
                 userId: p.userId,
                 status: p.status,
                 currentBet: p.currentBet,
-                handState: p.handState,
+                handState: filteredHand ? JSON.stringify(filteredHand) : null,
                 user: p.user ? {
                     id: p.user.id,
                     username: p.user.username,
                     name: p.user.name,
                     avatarUrl: p.user.avatarUrl
                 } : null
-            }))
+            }
+        })
+
+        // Return table without exposing deck
+        const { gameState: _, ...tableWithoutGameState } = table as any
+        res.json({
+            ...tableWithoutGameState,
+            gameState: safeGameState ? JSON.stringify(safeGameState) : null,
+            participants: filteredParticipants
         })
     } catch (error) {
         console.error("Error getting table:", error)
@@ -610,7 +650,8 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
             players: {},
             currentTurn: 0,
             turnOrder: [],
-            immediateWinners: []
+            immediateWinners: [],
+            dealerInstantWin: false
         }
 
         // Deal cards (dealer is last in order)
@@ -629,6 +670,67 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
         const dealerUser = await userRepo.findOne({ where: { id: dealerId } })
         const dealerHand = gameState.players[dealerId]
 
+        // Check if dealer has instant win (Sỏ bàng/Sỏ dép)
+        if (gameState.dealerInstantWin) {
+            // Dealer wins all bets from non-dealer players
+            const results: any[] = []
+            for (const p of nonDealerPlayers) {
+                const pHand = gameState.players[p.userId]
+                const bet = p.currentBet
+
+                // Dealer receives the bet (player already lost it at start)
+                if (dealerUser) {
+                    dealerUser.credit += bet
+                    await userRepo.save(dealerUser)
+                }
+
+                results.push({
+                    userId: p.userId,
+                    hand: pHand,
+                    bet: bet,
+                    winnings: -bet,
+                    description: dealerHand.isDoubleAce ? 'Nhà cái Xì Bàn! 🎉' : 'Nhà cái Xì Dách! 🃏'
+                })
+            }
+
+            // Add dealer result
+            results.push({
+                userId: dealerId,
+                hand: dealerHand,
+                bet: 0,
+                winnings: 0,
+                description: dealerHand.isDoubleAce ? 'Xì Bàn - Thắng trắng! 🎉' : 'Xì Dách - Thắng trắng! 🃏',
+                isDealer: true
+            })
+
+            // Game ends immediately
+            table.status = "finished"
+            table.gameState = JSON.stringify({
+                deck: gameState.deck,
+                dealerId: gameState.dealerId,
+                currentTurn: 'finished',
+                turnOrder: [],
+                immediateWinners: [],
+                dealerInstantWin: true,
+                results
+            })
+            await tableRepo.save(table)
+
+            // Emit game finished
+            try {
+                const io = getIO()
+                io.emit("games:game_finished", {
+                    tableId: tableIdNum,
+                    dealerId: dealerId,
+                    dealerInstantWin: true,
+                    results
+                })
+            } catch (e) { }
+
+            return res.json({ success: true, finished: true, dealerInstantWin: true, dealerId, results })
+        }
+
+        // Handle player immediate winners (Sỏ bàng/Sỏ dép) - pay them now
         for (const winnerId of gameState.immediateWinners) {
             const winnerParticipant = participants.find(p => p.userId === winnerId)
             if (!winnerParticipant) continue
@@ -649,7 +751,7 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
                     userId: winnerId,
                     amount: winnings,
                     type: "win",
-                    description: `Sỏ dép (thắng trắng): ${description}`,
+                    description: `Thắng trắng: ${description}`,
                     balanceAfter: winnerUser.credit
                 })
                 await transactionRepo.save(tx)
@@ -664,23 +766,36 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
 
         // Update table with turn timer
         table.status = "playing"
+        // Store FULL state on server (with deck) - never exposed to client
         table.gameState = JSON.stringify({
             deck: gameState.deck,
             dealerId: gameState.dealerId,
+            players: gameState.players, // Full player hands stored server-side
             currentTurn: gameState.currentTurn,
             turnOrder: gameState.turnOrder,
             immediateWinners: gameState.immediateWinners,
+            dealerInstantWin: false,
             turnStartTime: Date.now()
         })
         await tableRepo.save(table)
 
-        // Emit game started
+        // Emit per-user filtered game state (each user only sees their own cards)
         try {
-            const io = getIO()
-            io.emit("games:game_started", { tableId: tableIdNum })
+            const playerIds = participants.map(p => p.userId)
+            await emitToEachGameUser(
+                tableIdNum,
+                "games:game_started",
+                playerIds,
+                (userId) => ({
+                    tableId: tableIdNum,
+                    gameState: blackjack.filterStateForUser(gameState, userId, false)
+                })
+            )
         } catch (e) { }
 
-        res.json({ success: true, gameState })
+        // Return filtered state for requesting user (no deck, masked cards)
+        const filteredState = blackjack.filterStateForUser(gameState, user.id, false)
+        res.json({ success: true, gameState: filteredState })
     } catch (error) {
         console.error("Error starting game:", error)
         res.status(500).json({ error: "Internal server error" })
@@ -741,10 +856,25 @@ router.post("/tables/:tableId/hit", async (req: any, res) => {
         table.gameState = JSON.stringify(gameState)
         await tableRepo.save(table)
 
-        // Emit update
+        // Emit per-user filtered update
         try {
-            const io = getIO()
-            io.emit("games:player_hit", { tableId: tableIdNum, userId: user.id, hand })
+            const participants = await participantRepo.find({
+                where: { tableId: tableIdNum, status: "joined" }
+            })
+            const playerIds = participants.map(p => p.userId)
+
+            await emitToEachGameUser(
+                tableIdNum,
+                "games:player_hit",
+                playerIds,
+                (pUserId) => ({
+                    tableId: tableIdNum,
+                    hitUserId: user.id,
+                    // Each user sees their own filtered view
+                    hand: pUserId === user.id ? hand : blackjack.maskHand(hand),
+                    currentTurn: gameState.currentTurn
+                })
+            )
         } catch (e) { }
 
         res.json({ success: true, hand, currentTurn: gameState.currentTurn })
