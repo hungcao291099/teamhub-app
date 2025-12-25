@@ -13,6 +13,7 @@ import { AutoCheckInLog } from "./entities/AutoCheckInLog"
 import { CreditTransaction } from "./entities/CreditTransaction"
 import { GameTable } from "./entities/GameTable"
 import { GameTableParticipant } from "./entities/GameTableParticipant"
+import { GameInvite } from "./entities/GameInvite"
 
 // Import migrations
 import { InitialSchema1765611148994 } from "./migrations/1765611148994-InitialSchema"
@@ -24,6 +25,8 @@ import { AddSelectedFrameToUser1735004000000 } from "./migrations/1735004000000-
 import { AddConversationAvatar1766219051705 } from "./migrations/1766219051705-AddConversationAvatar"
 import { AddGamesFeature1735050000000 } from "./migrations/1735050000000-AddGamesFeature"
 import { AddDealerIdToGameTable1735100000000 } from "./migrations/1735100000000-AddDealerIdToGameTable"
+import { AddSelectedShiftMaToUser1735120000000 } from "./migrations/1735120000000-AddSelectedShiftMaToUser"
+import { AddGameInvite1766645120831 } from "./migrations/1766645120831-AddGameInvite"
 
 // Use absolute path to ensure same database in dev and prod
 const dbPath = path.resolve(__dirname, "../database.sqlite");
@@ -57,7 +60,8 @@ export const AppDataSource = new DataSource({
         AddSelectedFrameToUser1735004000000,
         AddConversationAvatar1766219051705,
         AddGamesFeature1735050000000,
-        AddDealerIdToGameTable1735100000000
+        AddDealerIdToGameTable1735100000000,
+        AddSelectedShiftMaToUser1735120000000
     ],
     subscribers: [],
 })

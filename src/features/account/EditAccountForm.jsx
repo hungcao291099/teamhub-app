@@ -39,22 +39,39 @@ export function EditAccountForm({ user, onSave, onCancel }) {
       selectedFrame: user.selectedFrame || "",
       selectedShiftMa: user.selectedShiftMa || "",
     });
-    // Load shifts if user has tokenA
-    if (user.tokenA) {
-      loadShifts();
-    }
   }, [user, reset]);
 
+  // Watch tokenA field for live shift loading
+  const watchedTokenA = watch("tokenA");
+
+  useEffect(() => {
+    // Debounce slightly to avoid too many requests while typing
+    const timer = setTimeout(() => {
+      if (watchedTokenA && watchedTokenA.length > 10) {
+        loadShifts(watchedTokenA);
+      } else {
+        setCaLamViecList([]);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [watchedTokenA]);
+
   // Load work shifts from HRM API
-  const loadShifts = async () => {
+  const loadShifts = async (token) => {
+    if (loadingShifts) return;
     setLoadingShifts(true);
     try {
-      const result = await getCaLamViecByUser();
+      console.log("Loading shifts for token:", token.substring(0, 10) + "...");
+      const result = await getCaLamViecByUser(token);
       if (result.Status === "OK" && result.Data) {
-        setCaLamViecList(result.Data);
+        const shifts = typeof result.Data === 'string' ? JSON.parse(result.Data) : result.Data;
+        setCaLamViecList(Array.isArray(shifts) ? shifts : []);
+      } else {
+        setCaLamViecList([]);
       }
     } catch (error) {
       console.error("Failed to load shifts:", error);
+      setCaLamViecList([]);
     } finally {
       setLoadingShifts(false);
     }
@@ -265,14 +282,14 @@ export function EditAccountForm({ user, onSave, onCancel }) {
           </span>
         </div>
 
-        {/* Shift Selection - Only show if user has tokenA and shifts loaded */}
-        {watch("tokenA") && (
+        {/* Shift Selection - Only show if user has tokenA */}
+        {watchedTokenA && watchedTokenA.length > 0 && (
           <div className="space-y-2">
-            <Label htmlFor="selectedShiftMa">Ca làm việc (Auto Check-in)</Label>
+            <Label htmlFor="selectedShiftMa">Ca làm việc ưu tiên</Label>
             {loadingShifts ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Đang tải danh sách ca...</span>
+              <div className="flex items-center gap-2 text-muted-foreground p-2 border rounded-md bg-muted/20">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm">Đang tải danh sách ca từ HRM...</span>
               </div>
             ) : caLamViecList.length > 0 ? (
               <>
@@ -281,21 +298,23 @@ export function EditAccountForm({ user, onSave, onCancel }) {
                   {...register("selectedShiftMa")}
                   className="w-full h-10 px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 >
-                  <option value="">-- Chọn ca làm việc --</option>
+                  <option value="">-- Chọn ca làm việc mặc định --</option>
                   {caLamViecList.map((ca) => (
                     <option key={ca.Ma} value={ca.Ma}>
-                      {ca.Ten}
+                      {ca.Ten} ({ca.Code})
                     </option>
                   ))}
                 </select>
-                <span className="text-xs text-muted-foreground">
-                  Ca này sẽ được dùng cho auto check-in và chấm công thủ công
-                </span>
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  Ca này sẽ được ưu tiên hiển thị và dùng cho tự động chấm công.
+                </p>
               </>
             ) : (
-              <span className="text-sm text-muted-foreground">
-                Không có ca làm việc. Hãy lưu Token A để tải danh sách ca.
-              </span>
+              <div className="p-3 border rounded-md bg-yellow-500/10 border-yellow-500/20">
+                <p className="text-xs text-yellow-600">
+                  Không tìm thấy danh sách ca. Vui lòng kiểm tra lại Token A.
+                </p>
+              </div>
             )}
           </div>
         )}

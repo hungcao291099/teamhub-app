@@ -11,7 +11,7 @@ export function GamesFooter() {
 
     return (
         <footer className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border px-4 py-3 z-50">
-            <div className="max-w-3xl mx-auto flex items-center justify-between">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
                 {/* User Info */}
                 <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 border-2 border-primary/30">

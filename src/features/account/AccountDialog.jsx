@@ -35,27 +35,32 @@ export function AccountDialog({ open, onOpenChange }) {
         }
     }, [open]);
 
-    // Load work shifts when dialog opens and user has tokenA
+    // Load work shifts when dialog opens, tokenA exists or selectedShiftMa changes
     useEffect(() => {
         if (open && currentUser?.tokenA) {
             loadCaLamViec();
         }
-    }, [open, currentUser?.tokenA]);
+    }, [open, currentUser?.tokenA, currentUser?.selectedShiftMa]);
 
     const loadCaLamViec = async () => {
         try {
             const result = await getCaLamViecByUser();
-            if (result.Status === "OK" && result.Data.length > 0) {
-                // Priority: find shift that user has selected
-                if (currentUser?.selectedShiftMa) {
-                    const selectedShift = result.Data.find(shift => shift.Ma === currentUser.selectedShiftMa);
-                    if (selectedShift) {
-                        setCaLamViec(selectedShift);
-                        return;
+            if (result.Status === "OK" && result.Data) {
+                // Parse Data if it's a string
+                const shifts = typeof result.Data === 'string' ? JSON.parse(result.Data) : result.Data;
+
+                if (Array.isArray(shifts) && shifts.length > 0) {
+                    // Priority: find shift that user has selected
+                    if (currentUser?.selectedShiftMa) {
+                        const selectedShift = shifts.find(shift => shift.Ma === currentUser.selectedShiftMa);
+                        if (selectedShift) {
+                            setCaLamViec(selectedShift);
+                            return;
+                        }
                     }
+                    // Fallback to first shift
+                    setCaLamViec(shifts[0]);
                 }
-                // Fallback to first shift
-                setCaLamViec(result.Data[0]);
             }
         } catch (error) {
             console.error("Failed to load work shifts:", error);

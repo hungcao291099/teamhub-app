@@ -6,8 +6,9 @@ import { CaLamViec, ParsedHrmResponse, HrmApiResponse } from "@/types/hrmTypes";
  * Get work shifts (Ca làm việc) for current user
  * Calls backend proxy which uses user's tokenA from database
  */
-export const getCaLamViecByUser = async (): Promise<ParsedHrmResponse<CaLamViec[]>> => {
-    const response = await api.get<ParsedHrmResponse<CaLamViec[]>>("/hrm/ca-lam-viec");
+export const getCaLamViecByUser = async (tempToken?: string): Promise<ParsedHrmResponse<CaLamViec[]>> => {
+    const headers = tempToken ? { "x-temp-token": tempToken } : {};
+    const response = await api.get<ParsedHrmResponse<CaLamViec[]>>("/hrm/ca-lam-viec", { headers });
     return response.data;
 };
 

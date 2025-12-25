@@ -39,22 +39,48 @@ export function GamesPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold text-foreground">Chọn Game</h2>
-                <p className="text-muted-foreground">Đặt cược credit và thách đấu cùng đồng nghiệp!</p>
+        <div className="space-y-8 min-h-[80vh] pb-10">
+            {/* Tet 2026 Decorative Header */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-900 via-red-800 to-amber-900 p-8 text-center shadow-2xl border-b-4 border-amber-500/50">
+                {/* Decorative Flowers (Simulated with text/icons) */}
+                <div className="absolute top-2 left-4 text-3xl animate-bounce">🌸</div>
+                <div className="absolute top-10 right-10 text-4xl animate-pulse">🧧</div>
+                <div className="absolute bottom-4 left-10 text-2xl rotate-12">🧧</div>
+                <div className="absolute top-4 right-4 text-3xl">🌸</div>
+
+                <div className="relative z-10 space-y-3">
+                    <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-amber-500 drop-shadow-sm">
+                        MỪNG XUÂN 2026
+                    </h1>
+                    <div className="flex justify-center items-center gap-4 py-2">
+                        <div className="h-[1px] w-12 bg-amber-500/50"></div>
+                        <span className="text-amber-200 font-serif italic text-lg whitespace-nowrap">Phát Tài Phát Lộc</span>
+                        <div className="h-[1px] w-12 bg-amber-500/50"></div>
+                    </div>
+                    <p className="text-amber-100/80 font-medium">
+                        Thử vận may đầu năm - Rinh ngàn quà tặng!
+                    </p>
+                </div>
+
+                {/* Light reflection effect */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent skew-x-12 translate-x-[-100%] animate-[shimmer_3s_infinite]" />
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-6 md:grid-cols-2">
                 {GAMES.map((game) => (
-                    <GameCard key={game.id} {...game} />
+                    <div key={game.id} className="relative group">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-red-600 rounded-xl blur opacity-25 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+                        <div className="relative">
+                            <GameCard {...game} />
+                        </div>
+                    </div>
                 ))}
             </div>
-
-            {/* Hint for cheatcode - subtle */}
-            <p className="text-center text-xs text-muted-foreground/50 mt-8">
-                💡 Tip: Có thể bạn biết một vài cheatcode bí mật...
-            </p>
+            <style>{`
+                @keyframes shimmer {
+                    100% { transform: translateX(100%); }
+                }
+            `}</style>
         </div>
     );
 }

@@ -19,14 +19,14 @@ function GamesLayoutInner() {
         <div className="min-h-screen bg-background pb-20">
             {/* Header */}
             <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border">
-                <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-3">
                     <span className="text-2xl">🎮</span>
                     <h1 className="text-xl font-bold text-foreground">Games</h1>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="max-w-3xl mx-auto px-4 py-6">
+            <main className="max-w-7xl mx-auto px-4 py-6">
                 <Outlet />
             </main>
 

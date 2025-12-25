@@ -1,4 +1,4 @@
-// Blackjack game logic helpers - Vietnamese rules (Xì Dách)
+// Blackjack game logic helpers - Vietnamese rules (Sò dép)
 // Human dealer model: one player is the dealer (nhà cái)
 
 export interface Card {
@@ -11,7 +11,7 @@ export interface Hand {
     cards: Card[];
     score: number;
     isBusted: boolean;
-    isBlackjack: boolean; // Xì dách (A + 10/J/Q/K)
+    isBlackjack: boolean; // Sò dép (A + 10/J/Q/K)
     isDoubleAce: boolean; // Xì bàng (2 lá A)
     isFiveCard: boolean; // Ngũ linh (5 lá <= 21)
     isNon: boolean; // Non (< 16 điểm, không có special)
@@ -23,7 +23,7 @@ export interface GameState {
     players: { [userId: number]: Hand }; // All players including dealer
     currentTurn: number | 'finished';
     turnOrder: number[]; // Player order (dealer is LAST)
-    immediateWinners: number[]; // Players with Xì Bàng/Xì Dách
+    immediateWinners: number[]; // Players with Xì Bàng/Sò dép
     turnStartTime?: number; // For timeout
 }
 
@@ -101,10 +101,10 @@ export function evaluateHand(cards: Card[]): Hand {
 }
 
 // Get hand rank for comparison (higher = stronger)
-// Xì Bàng(5) > Xì Dách(4) > Ngũ Linh(3) > 16-21(2) > Non(1) > Quắc(0)
+// Xì Bàng(5) > Sò dép(4) > Ngũ Linh(3) > 16-21(2) > Non(1) > Quắc(0)
 export function getHandRank(hand: Hand): number {
     if (hand.isDoubleAce) return 5; // Xì Bàng
-    if (hand.isBlackjack) return 4; // Xì Dách
+    if (hand.isBlackjack) return 4; // Sò dép
     if (hand.isFiveCard) return 3; // Ngũ Linh
     if (hand.isBusted) return 0; // Quắc
     if (hand.isNon) return 1; // Non
@@ -130,7 +130,7 @@ export function dealInitialCards(state: GameState, playerIds: number[], dealerId
         cards.push(drawCard(state.deck)!);
         state.players[playerId] = evaluateHand(cards);
 
-        // Check instant win (Xì Bàng or Xì Dách) - except dealer
+        // Check instant win (Xì Bàng or Sò dép) - except dealer
         if (playerId !== dealerId) {
             if (state.players[playerId].isDoubleAce || state.players[playerId].isBlackjack) {
                 state.immediateWinners.push(playerId);
@@ -237,7 +237,7 @@ export function calculateWinnings(playerHand: Hand, dealerHand: Hand, bet: numbe
 // Get result description
 export function getResultDescription(playerHand: Hand, dealerHand: Hand, winnings: number): string {
     if (playerHand.isDoubleAce) return 'Xì Bàng! 🎉';
-    if (playerHand.isBlackjack) return 'Xì Dách! 🃏';
+    if (playerHand.isBlackjack) return 'Sò dép! 🃏';
     if (playerHand.isFiveCard) return 'Ngũ Linh! ⭐';
     if (playerHand.isBusted) return 'Quắc! 💥';
     if (playerHand.isNon) return 'Non! 😢';

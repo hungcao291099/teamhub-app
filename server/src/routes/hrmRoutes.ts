@@ -46,7 +46,10 @@ router.get("/ca-lam-viec", [checkJwt], async (req: Request, res: Response) => {
         const userRepository = AppDataSource.getRepository(User);
         const user = await userRepository.findOneOrFail({ where: { id: userId } });
 
-        if (!user.tokenA) {
+        // Prefer x-temp-token from header if provided (useful for previewing shifts before saving)
+        const tokenA = (req.headers["x-temp-token"] as string) || user.tokenA;
+
+        if (!tokenA) {
             res.status(400).json({ error: "Token A chưa được cấu hình" });
             return;
         }
@@ -56,7 +59,7 @@ router.get("/ca-lam-viec", [checkJwt], async (req: Request, res: Response) => {
             {},
             {
                 headers: {
-                    "token": user.tokenA,
+                    "token": tokenA,
                     "Content-Type": "application/json",
                 },
                 timeout: 30000,

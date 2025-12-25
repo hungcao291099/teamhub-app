@@ -146,11 +146,13 @@ router.get("/tables/:gameType", async (req: any, res) => {
             order: { createdAt: "DESC" }
         })
 
-        // Get participant count for each table
+        // Get participant count and invitation status for each table
         const tablesWithCounts = await Promise.all(tables.map(async (table) => {
             const count = await participantRepo.count({
                 where: { tableId: table.id, status: "joined" }
             })
+
+            const user = await getUserFromResponse(res)
             return {
                 ...table,
                 playerCount: count,
@@ -286,6 +288,8 @@ router.post("/tables/:tableId/join", async (req: any, res) => {
         if (table.status !== "waiting") {
             return res.status(400).json({ error: "Table is not accepting players" })
         }
+
+        // Check if already joined
 
         // Check if already joined
         const existing = await participantRepo.findOne({
@@ -465,44 +469,6 @@ router.post("/tables/:tableId/play-again", async (req: any, res) => {
     }
 })
 
-// POST /games/tables/:tableId/invite - Invite user to table
-router.post("/tables/:tableId/invite", async (req: any, res) => {
-    try {
-        const user = await getUserFromResponse(res)
-        if (!user) return res.status(401).json({ error: "Unauthorized" })
-
-        const { tableId } = req.params
-        const { userId: inviteeId } = req.body
-
-        if (!inviteeId) {
-            return res.status(400).json({ error: "userId is required" })
-        }
-
-        const tableRepo = AppDataSource.getRepository(GameTable)
-        const table = await tableRepo.findOne({ where: { id: parseInt(tableId) } })
-
-        if (!table) {
-            return res.status(404).json({ error: "Table not found" })
-        }
-
-        // Emit invite via socket
-        try {
-            const io = getIO()
-            io.emit("games:invite", {
-                tableId: table.id,
-                table: { id: table.id, name: table.name, gameType: table.gameType },
-                fromUser: { id: user.id, username: user.username, name: user.name },
-                toUserId: inviteeId
-            })
-        } catch (e) { }
-
-        res.json({ success: true })
-    } catch (error) {
-        console.error("Error inviting user:", error)
-        res.status(500).json({ error: "Internal server error" })
-    }
-})
-
 // ============ BLACKJACK GAME ACTIONS ============
 
 import * as blackjack from "../services/blackjackLogic"
@@ -658,7 +624,7 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
             await participantRepo.save(p)
         }
 
-        // Handle immediate winners (Xì Bàng/Xì Dách) - pay them now
+        // Handle immediate winners (Xì Bàng/Sò dép) - pay them now
         const transactionRepo = AppDataSource.getRepository(CreditTransaction)
         const dealerUser = await userRepo.findOne({ where: { id: dealerId } })
         const dealerHand = gameState.players[dealerId]
@@ -683,7 +649,7 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
                     userId: winnerId,
                     amount: winnings,
                     type: "win",
-                    description: `Xì dách (thắng trắng): ${description}`,
+                    description: `Sò dép (thắng trắng): ${description}`,
                     balanceAfter: winnerUser.credit
                 })
                 await transactionRepo.save(tx)
@@ -860,7 +826,7 @@ router.post("/tables/:tableId/stand", async (req: any, res) => {
                             userId: p.userId,
                             amount: winnings,
                             type: "win",
-                            description: `Xì dách: ${description}`,
+                            description: `Sò dép: ${description}`,
                             balanceAfter: playerUser.credit
                         })
                         await transactionRepo.save(tx)
@@ -986,7 +952,7 @@ router.post("/tables/:tableId/check-timeout", async (req: any, res) => {
                             userId: p.userId,
                             amount: winnings,
                             type: "win",
-                            description: `Xì dách: ${description}`,
+                            description: `Sò dép: ${description}`,
                             balanceAfter: playerUser.credit
                         })
                         await transactionRepo.save(tx)

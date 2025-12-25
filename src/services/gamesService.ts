@@ -48,10 +48,6 @@ export const leaveTable = async (tableId: number) => {
     return response.data;
 };
 
-export const inviteToTable = async (tableId: number, userId: number) => {
-    const response = await api.post(`/games/tables/${tableId}/invite`, { userId });
-    return response.data;
-};
 
 // Game action endpoints
 export const placeBet = async (tableId: number, amount: number) => {
@@ -95,8 +91,8 @@ export const TURN_TIMEOUT_MS = 30 * 1000; // 30 seconds
 export const GAMES = [
     {
         id: "blackjack",
-        name: "Xì Dách",
-        description: "Đạt 21 điểm hoặc gần nhất. Thắng 1:1, Xì dách 3:2",
+        name: "Sò dép",
+        description: "Đạt 21 điểm hoặc gần nhất. Thắng 1:1, Sò dép 3:2",
         icon: "🃏",
         minPlayers: 1,
         maxPlayers: 4,

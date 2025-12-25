@@ -35,7 +35,7 @@ export function UtilitiesPage() {
       id: "games",
       to: "/games",
       title: "Trò chơi",
-      description: "Xì dách, đếm nút và các game đặt cược khác.",
+      description: "Sò dép, đếm nút và các game đặt cược khác.",
       icon: Gamepad2,
     },
   ];
