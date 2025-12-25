@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { updateUser, uploadAvatar } from "@/services/userService";
+import { getCaLamViecByUser } from "@/services/hrmApiService";
 import { AvatarCropDialog } from "./AvatarCropDialog";
-import { Camera, X } from "lucide-react";
+import { Camera, X, Loader2 } from "lucide-react";
 import { frameList, frameMap, AvatarWithFrame } from "@/components/ui/avatar-with-frame";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -17,12 +18,15 @@ export function EditAccountForm({ user, onSave, onCancel }) {
   const [uploading, setUploading] = useState(false);
   const [showCropDialog, setShowCropDialog] = useState(false);
   const [imageToEdit, setImageToEdit] = useState(null);
+  const [caLamViecList, setCaLamViecList] = useState([]);
+  const [loadingShifts, setLoadingShifts] = useState(false);
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm({
     defaultValues: {
       name: user.name,
       avatar: user.avatarUrl || "",
       tokenA: user.tokenA || "",
       selectedFrame: user.selectedFrame || "",
+      selectedShiftMa: user.selectedShiftMa || "",
     }
   });
 
@@ -33,8 +37,28 @@ export function EditAccountForm({ user, onSave, onCancel }) {
       avatar: user.avatarUrl || "", // Note: backend sends avatarUrl
       tokenA: user.tokenA || "",
       selectedFrame: user.selectedFrame || "",
+      selectedShiftMa: user.selectedShiftMa || "",
     });
+    // Load shifts if user has tokenA
+    if (user.tokenA) {
+      loadShifts();
+    }
   }, [user, reset]);
+
+  // Load work shifts from HRM API
+  const loadShifts = async () => {
+    setLoadingShifts(true);
+    try {
+      const result = await getCaLamViecByUser();
+      if (result.Status === "OK" && result.Data) {
+        setCaLamViecList(result.Data);
+      }
+    } catch (error) {
+      console.error("Failed to load shifts:", error);
+    } finally {
+      setLoadingShifts(false);
+    }
+  };
 
   // Handle file selection - open crop dialog instead of uploading immediately
   const handleFileChange = (e) => {
@@ -101,6 +125,7 @@ export function EditAccountForm({ user, onSave, onCancel }) {
         avatarUrl: data.avatar,
         tokenA: data.tokenA,
         selectedFrame: data.selectedFrame || null,
+        selectedShiftMa: data.selectedShiftMa || null,
       };
 
       await updateUser(user.id, userData);
@@ -194,8 +219,8 @@ export function EditAccountForm({ user, onSave, onCancel }) {
                   type="button"
                   onClick={() => setValue("selectedFrame", "")}
                   className={`relative w-12 h-12 rounded-lg border-2 transition-all hover:scale-105 hover:border-primary/50 flex items-center justify-center ${!watch("selectedFrame")
-                      ? "border-primary bg-primary/10 ring-2 ring-primary ring-offset-2"
-                      : "border-border bg-muted/30"
+                    ? "border-primary bg-primary/10 ring-2 ring-primary ring-offset-2"
+                    : "border-border bg-muted/30"
                     }`}
                 >
                   <X className="h-5 w-5 text-muted-foreground" />
@@ -207,8 +232,8 @@ export function EditAccountForm({ user, onSave, onCancel }) {
                     type="button"
                     onClick={() => setValue("selectedFrame", frame.id)}
                     className={`relative w-12 h-12 rounded-lg border-2 transition-all hover:scale-105 hover:border-primary/50 p-0.5 ${watch("selectedFrame") === frame.id
-                        ? "border-primary bg-primary/10 ring-2 ring-primary ring-offset-2"
-                        : "border-border bg-muted/30"
+                      ? "border-primary bg-primary/10 ring-2 ring-primary ring-offset-2"
+                      : "border-border bg-muted/30"
                       }`}
                   >
                     <img
@@ -239,6 +264,41 @@ export function EditAccountForm({ user, onSave, onCancel }) {
             Token dùng cho việc gọi API bên ngoài
           </span>
         </div>
+
+        {/* Shift Selection - Only show if user has tokenA and shifts loaded */}
+        {watch("tokenA") && (
+          <div className="space-y-2">
+            <Label htmlFor="selectedShiftMa">Ca làm việc (Auto Check-in)</Label>
+            {loadingShifts ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Đang tải danh sách ca...</span>
+              </div>
+            ) : caLamViecList.length > 0 ? (
+              <>
+                <select
+                  id="selectedShiftMa"
+                  {...register("selectedShiftMa")}
+                  className="w-full h-10 px-3 py-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">-- Chọn ca làm việc --</option>
+                  {caLamViecList.map((ca) => (
+                    <option key={ca.Ma} value={ca.Ma}>
+                      {ca.Ten}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-muted-foreground">
+                  Ca này sẽ được dùng cho auto check-in và chấm công thủ công
+                </span>
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                Không có ca làm việc. Hãy lưu Token A để tải danh sách ca.
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-2 justify-end">
           <Button type="button" variant="secondary" onClick={onCancel}>

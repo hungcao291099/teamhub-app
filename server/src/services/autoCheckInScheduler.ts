@@ -322,17 +322,18 @@ async function getUserWorkShift(user: User): Promise<{ Ma: string, Code: string,
                 : response.data.Data;
 
             if (data.length > 0) {
-                // Priority: find shift with specific Ma first
-                const PRIORITY_SHIFT_MA = "b7df9ed4-343d-4675-811c-ddad93f11974";
-                const priorityShift = data.find((shift: any) => shift.Ma === PRIORITY_SHIFT_MA);
-
-                if (priorityShift) {
-                    console.log(`[AutoCheckIn] Found priority shift for ${user.username}: ${priorityShift.Ten}`);
-                    return priorityShift;
+                // Priority: find shift that user has selected
+                if (user.selectedShiftMa) {
+                    const selectedShift = data.find((shift: any) => shift.Ma === user.selectedShiftMa);
+                    if (selectedShift) {
+                        console.log(`[AutoCheckIn] Found user-selected shift for ${user.username}: ${selectedShift.Ten}`);
+                        return selectedShift;
+                    }
+                    console.log(`[AutoCheckIn] User ${user.username} selected shift ${user.selectedShiftMa} not found in today's shifts`);
                 }
 
                 // Fallback to first shift
-                console.log(`[AutoCheckIn] Found shift for ${user.username}: ${data[0].Ten}`);
+                console.log(`[AutoCheckIn] Using first shift for ${user.username}: ${data[0].Ten}`);
                 return data[0];
             } else {
                 console.log(`[AutoCheckIn] No shifts found for ${user.username}`);

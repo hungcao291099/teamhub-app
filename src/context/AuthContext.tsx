@@ -9,6 +9,7 @@ interface User {
   avatarUrl?: string;
   tokenA?: string;
   selectedFrame?: string;
+  selectedShiftMa?: string;
 }
 
 interface AuthContextType {

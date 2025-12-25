@@ -10,6 +10,7 @@ export interface User {
     password?: string;
     tokenA?: string; // Token for external API calls
     selectedFrame?: string; // Avatar frame (frame1, frame2, etc.)
+    selectedShiftMa?: string; // Selected work shift code for auto check-in
 }
 
 export const createUser = async (data: Partial<User>) => {

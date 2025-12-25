@@ -32,7 +32,7 @@ class UserController {
 
     static update = async (req: Request, res: Response) => {
         const id = parseInt(req.params.id);
-        const { name, role, avatarUrl, isActive, tokenA, selectedFrame } = req.body;
+        const { name, role, avatarUrl, isActive, tokenA, selectedFrame, selectedShiftMa } = req.body;
         const userRepository = AppDataSource.getRepository(User);
         try {
             let user = await userRepository.findOneOrFail({ where: { id } });
@@ -53,6 +53,10 @@ class UserController {
             // selectedFrame: allow explicit update including null/empty to remove frame
             if (selectedFrame !== undefined) {
                 user.selectedFrame = selectedFrame || null;
+            }
+            // selectedShiftMa: allow explicit update including null/empty to clear selection
+            if (selectedShiftMa !== undefined) {
+                user.selectedShiftMa = selectedShiftMa || null;
             }
             await userRepository.save(user);
 
