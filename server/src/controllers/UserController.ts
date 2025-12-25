@@ -57,6 +57,12 @@ class UserController {
             // selectedShiftMa: allow explicit update including null/empty to clear selection
             if (selectedShiftMa !== undefined) {
                 user.selectedShiftMa = selectedShiftMa || null;
+                // Update cache if shift is changed
+                if (user.tokenA) {
+                    fetchAndCacheUserShift(user).catch(err => {
+                        console.error(`[UserController] Failed to update cached shift for ${user.username}:`, err.message);
+                    });
+                }
             }
             await userRepository.save(user);
 

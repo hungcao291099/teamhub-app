@@ -46,6 +46,15 @@ export function AccountDialog({ open, onOpenChange }) {
         try {
             const result = await getCaLamViecByUser();
             if (result.Status === "OK" && result.Data.length > 0) {
+                // Priority: find shift that user has selected
+                if (currentUser?.selectedShiftMa) {
+                    const selectedShift = result.Data.find(shift => shift.Ma === currentUser.selectedShiftMa);
+                    if (selectedShift) {
+                        setCaLamViec(selectedShift);
+                        return;
+                    }
+                }
+                // Fallback to first shift
                 setCaLamViec(result.Data[0]);
             }
         } catch (error) {

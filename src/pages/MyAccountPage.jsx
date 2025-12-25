@@ -52,7 +52,16 @@ export function MyAccountPage() {
     try {
       const result = await getCaLamViecByUser(tokenA);
       if (result.Status === "OK" && result.Data.length > 0) {
-        setCaLamViec(result.Data[0]); // Use first work shift
+        // Priority: find shift that user has selected
+        if (userData?.selectedShiftMa) {
+          const selectedShift = result.Data.find(shift => shift.Ma === userData.selectedShiftMa);
+          if (selectedShift) {
+            setCaLamViec(selectedShift);
+            return;
+          }
+        }
+        // Fallback to first shift
+        setCaLamViec(result.Data[0]);
       }
     } catch (error) {
       console.error("Failed to load work shifts:", error);
