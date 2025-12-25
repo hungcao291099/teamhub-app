@@ -60,7 +60,7 @@ export const AppDataSource = new DataSource({
         AddConversationAvatar1766219051705,
         AddGamesFeature1735050000000,
         AddDealerIdToGameTable1735100000000,
-        AddSelectedShiftMaToUser1735120000000,
+        // AddSelectedShiftMaToUser1735120000000,
         AddGameInvite1766645120831
     ],
     subscribers: [],
