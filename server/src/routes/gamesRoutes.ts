@@ -242,6 +242,7 @@ router.post("/tables", async (req: any, res) => {
             minBet,
             maxBet,
             createdById: user.id,
+            dealerId: user.id, // Room owner is default dealer
             status: "waiting"
         })
         await tableRepo.save(table)
@@ -333,7 +334,7 @@ router.post("/tables/:tableId/join", async (req: any, res) => {
     }
 })
 
-// POST /games/tables/:tableId/leave - Leave a table
+// POST /games/tables/:tableId/leave - Leave a table (owner dissolves room)
 router.post("/tables/:tableId/leave", async (req: any, res) => {
     try {
         const user = await getUserFromResponse(res)
@@ -341,8 +342,18 @@ router.post("/tables/:tableId/leave", async (req: any, res) => {
 
         const { tableId } = req.params
         const tableIdNum = parseInt(tableId)
+
+        if (isNaN(tableIdNum) || tableIdNum <= 0) {
+            return res.status(400).json({ error: "Invalid tableId" })
+        }
+
         const participantRepo = AppDataSource.getRepository(GameTableParticipant)
         const tableRepo = AppDataSource.getRepository(GameTable)
+
+        const table = await tableRepo.findOne({ where: { id: tableIdNum } })
+        if (!table) {
+            return res.status(404).json({ error: "Table not found" })
+        }
 
         const participant = await participantRepo.findOne({
             where: { tableId: tableIdNum, userId: user.id }
@@ -352,6 +363,24 @@ router.post("/tables/:tableId/leave", async (req: any, res) => {
             return res.status(404).json({ error: "Not in this table" })
         }
 
+        const isOwner = table.createdById === user.id
+
+        // If owner leaves, dissolve entire room
+        if (isOwner) {
+            // Delete all participants and table
+            await participantRepo.delete({ tableId: tableIdNum })
+            await tableRepo.delete({ id: tableIdNum })
+
+            // Emit socket event for room dissolved
+            try {
+                const io = getIO()
+                io.emit("games:room_dissolved", { tableId: tableIdNum, reason: "Chủ phòng đã giải tán bàn" })
+            } catch (e) { }
+
+            return res.json({ success: true, dissolved: true })
+        }
+
+        // Regular member leaves
         participant.status = "left"
         await participantRepo.save(participant)
 
@@ -365,13 +394,11 @@ router.post("/tables/:tableId/leave", async (req: any, res) => {
             await participantRepo.delete({ tableId: tableIdNum })
             await tableRepo.delete({ id: tableIdNum })
 
-            // Emit socket event for table deleted
             try {
                 const io = getIO()
                 io.emit("games:table_deleted", { tableId: tableIdNum })
             } catch (e) { }
         } else {
-            // Emit socket event for player left
             try {
                 const io = getIO()
                 io.emit("games:player_left", { tableId: tableIdNum, userId: user.id })
@@ -381,6 +408,59 @@ router.post("/tables/:tableId/leave", async (req: any, res) => {
         res.json({ success: true, tableDeleted: remainingCount === 0 })
     } catch (error) {
         console.error("Error leaving table:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// POST /games/tables/:tableId/play-again - Reset table for new round (owner only)
+router.post("/tables/:tableId/play-again", async (req: any, res) => {
+    try {
+        const user = await getUserFromResponse(res)
+        if (!user) return res.status(401).json({ error: "Unauthorized" })
+
+        const { tableId } = req.params
+        const tableIdNum = parseInt(tableId)
+
+        if (isNaN(tableIdNum) || tableIdNum <= 0) {
+            return res.status(400).json({ error: "Invalid tableId" })
+        }
+
+        const tableRepo = AppDataSource.getRepository(GameTable)
+        const participantRepo = AppDataSource.getRepository(GameTableParticipant)
+
+        const table = await tableRepo.findOne({ where: { id: tableIdNum } })
+        if (!table) {
+            return res.status(404).json({ error: "Table not found" })
+        }
+
+        if (table.createdById !== user.id) {
+            return res.status(403).json({ error: "Chỉ chủ phòng mới được bắt đầu lại" })
+        }
+
+        if (table.status !== "finished") {
+            return res.status(400).json({ error: "Ván chưa kết thúc" })
+        }
+
+        // Reset table state
+        table.status = "waiting"
+        table.gameState = ""
+        await tableRepo.save(table)
+
+        // Reset all participants' bets and hands
+        await participantRepo.update(
+            { tableId: tableIdNum, status: "joined" },
+            { currentBet: 0, handState: "" }
+        )
+
+        // Emit socket event
+        try {
+            const io = getIO()
+            io.emit("games:play_again", { tableId: tableIdNum })
+        } catch (e) { }
+
+        res.json({ success: true })
+    } catch (error) {
+        console.error("Error resetting table:", error)
         res.status(500).json({ error: "Internal server error" })
     }
 })
@@ -535,18 +615,21 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
             where: { tableId: tableIdNum, status: "joined" }
         })
 
-        if (participants.length < 1) {
-            return res.status(400).json({ error: "Cần ít nhất 1 người chơi" })
+        if (participants.length < 2) {
+            return res.status(400).json({ error: "Cần ít nhất 2 người chơi (1 nhà cái + 1 nhà con)" })
         }
 
-        // Check all have placed bets
-        const noBet = participants.find(p => !p.currentBet || p.currentBet < 10)
+        const dealerId = table.dealerId || table.createdById
+
+        // Check non-dealer players have placed bets
+        const nonDealerPlayers = participants.filter(p => p.userId !== dealerId)
+        const noBet = nonDealerPlayers.find(p => !p.currentBet || p.currentBet < 10)
         if (noBet) {
-            return res.status(400).json({ error: "Tất cả người chơi phải đặt cược" })
+            return res.status(400).json({ error: "Tất cả nhà con phải đặt cược" })
         }
 
-        // Deduct bets from players
-        for (const p of participants) {
+        // Deduct bets from non-dealer players only
+        for (const p of nonDealerPlayers) {
             const playerUser = await userRepo.findOne({ where: { id: p.userId } })
             if (playerUser) {
                 playerUser.credit -= p.currentBet
@@ -554,18 +637,19 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
             }
         }
 
-        // Create game state
+        // Create game state with human dealer
         const gameState: blackjack.GameState = {
             deck: blackjack.createDeck(),
-            dealer: { cards: [], score: 0, isBusted: false, isBlackjack: false, isDoubleAce: false, isFiveCard: false },
+            dealerId: dealerId,
             players: {},
             currentTurn: 0,
-            turnOrder: []
+            turnOrder: [],
+            immediateWinners: []
         }
 
-        // Deal cards
+        // Deal cards (dealer is last in order)
         const playerIds = participants.map(p => p.userId)
-        blackjack.dealInitialCards(gameState, playerIds)
+        blackjack.dealInitialCards(gameState, playerIds, dealerId)
 
         // Save hand states to participants
         for (const p of participants) {
@@ -574,13 +658,52 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
             await participantRepo.save(p)
         }
 
+        // Handle immediate winners (Xì Bàng/Xì Dách) - pay them now
+        const transactionRepo = AppDataSource.getRepository(CreditTransaction)
+        const dealerUser = await userRepo.findOne({ where: { id: dealerId } })
+        const dealerHand = gameState.players[dealerId]
+
+        for (const winnerId of gameState.immediateWinners) {
+            const winnerParticipant = participants.find(p => p.userId === winnerId)
+            if (!winnerParticipant) continue
+
+            const winnerHand = gameState.players[winnerId]
+            const bet = winnerParticipant.currentBet
+
+            // Calculate winnings using the same logic
+            const winnings = blackjack.calculateWinnings(winnerHand, dealerHand, bet)
+            const description = blackjack.getResultDescription(winnerHand, dealerHand, winnings)
+
+            // Pay winner
+            const winnerUser = await userRepo.findOne({ where: { id: winnerId } })
+            if (winnerUser && winnings > 0) {
+                winnerUser.credit += bet + winnings // Return bet + winnings
+                await userRepo.save(winnerUser)
+                const tx = transactionRepo.create({
+                    userId: winnerId,
+                    amount: winnings,
+                    type: "win",
+                    description: `Xì dách (thắng trắng): ${description}`,
+                    balanceAfter: winnerUser.credit
+                })
+                await transactionRepo.save(tx)
+            }
+
+            // Dealer loses
+            if (dealerUser && winnings > 0) {
+                dealerUser.credit -= winnings
+                await userRepo.save(dealerUser)
+            }
+        }
+
         // Update table with turn timer
         table.status = "playing"
         table.gameState = JSON.stringify({
             deck: gameState.deck,
-            dealer: gameState.dealer,
+            dealerId: gameState.dealerId,
             currentTurn: gameState.currentTurn,
             turnOrder: gameState.turnOrder,
+            immediateWinners: gameState.immediateWinners,
             turnStartTime: Date.now()
         })
         await tableRepo.save(table)
@@ -690,57 +813,95 @@ router.post("/tables/:tableId/stand", async (req: any, res) => {
             return res.status(400).json({ error: "Chưa đến lượt bạn" })
         }
 
+        // Get player's hand to check if they can stand
+        const participant = await participantRepo.findOne({
+            where: { tableId: tableIdNum, userId: user.id }
+        })
+        if (!participant) return res.status(404).json({ error: "Not in table" })
+
+        const playerHand = JSON.parse(participant.handState || "{}")
+
+        // Check if player can stand (must have >= 16 or special hand)
+        if (!blackjack.canStand(playerHand)) {
+            return res.status(400).json({ error: "Cần ít nhất 16 điểm mới được dừng (đủ tuổi)" })
+        }
+
         // Move to next turn
         blackjack.nextTurn(gameState)
 
-        // If dealer's turn, play dealer and finish game
-        if (gameState.currentTurn === 'dealer') {
-            blackjack.dealerPlay(gameState)
+        // If game is finished (dealer was last), calculate results
+        if (gameState.currentTurn === 'finished') {
+            // Get dealer's hand (dealer is a player)
+            const dealerHand = gameState.players[gameState.dealerId]
 
-            // Calculate results for all players
+            // Calculate results for all non-dealer players
             const participants = await participantRepo.find({
                 where: { tableId: tableIdNum, status: "joined" }
             })
 
             const results: any[] = []
             for (const p of participants) {
-                const playerHand = JSON.parse(p.handState || "{}")
-                const winnings = blackjack.calculateWinnings(playerHand, gameState.dealer, p.currentBet)
-                const description = blackjack.getResultDescription(playerHand, gameState.dealer, winnings)
+                if (p.userId === gameState.dealerId) continue // Skip dealer
 
-                // Update credits
+                const pHand = JSON.parse(p.handState || "{}")
+                const winnings = blackjack.calculateWinnings(pHand, dealerHand, p.currentBet)
+                const description = blackjack.getResultDescription(pHand, dealerHand, winnings)
+
+                // Update player credits and dealer credits
                 const playerUser = await userRepo.findOne({ where: { id: p.userId } })
-                if (playerUser && winnings !== 0) {
-                    // Add back bet + winnings (bet was already deducted at start)
-                    const payout = p.currentBet + winnings
-                    if (payout > 0) {
-                        playerUser.credit += payout
-                        await userRepo.save(playerUser)
+                const dealerUser = await userRepo.findOne({ where: { id: gameState.dealerId } })
 
-                        // Log transaction
+                if (winnings > 0) {
+                    // Player wins - pay player (bet + winnings), dealer loses winnings
+                    if (playerUser) {
+                        playerUser.credit += p.currentBet + winnings
+                        await userRepo.save(playerUser)
                         const tx = transactionRepo.create({
                             userId: p.userId,
                             amount: winnings,
-                            type: winnings > 0 ? "win" : "lose",
+                            type: "win",
                             description: `Xì dách: ${description}`,
                             balanceAfter: playerUser.credit
                         })
                         await transactionRepo.save(tx)
                     }
-                } else if (playerUser && winnings === 0) {
-                    // Push - return bet
-                    playerUser.credit += p.currentBet
-                    await userRepo.save(playerUser)
+                    if (dealerUser) {
+                        dealerUser.credit -= winnings
+                        await userRepo.save(dealerUser)
+                    }
+                } else if (winnings < 0) {
+                    // Player loses - dealer wins the bet amount
+                    // Player already lost bet at start, so no refund
+                    if (dealerUser) {
+                        dealerUser.credit += p.currentBet // Dealer receives full bet
+                        await userRepo.save(dealerUser)
+                    }
+                } else {
+                    // Push (winnings === 0) - return bet to player
+                    if (playerUser) {
+                        playerUser.credit += p.currentBet
+                        await userRepo.save(playerUser)
+                    }
                 }
 
                 results.push({
                     userId: p.userId,
-                    hand: playerHand,
+                    hand: pHand,
                     bet: p.currentBet,
                     winnings,
                     description
                 })
             }
+
+            // Add dealer result
+            results.push({
+                userId: gameState.dealerId,
+                hand: dealerHand,
+                bet: 0,
+                winnings: 0,
+                description: "Nhà cái",
+                isDealer: true
+            })
 
             // Update table status
             table.status = "finished"
@@ -752,12 +913,12 @@ router.post("/tables/:tableId/stand", async (req: any, res) => {
                 const io = getIO()
                 io.emit("games:game_finished", {
                     tableId: tableIdNum,
-                    dealer: gameState.dealer,
+                    dealerId: gameState.dealerId,
                     results
                 })
             } catch (e) { }
 
-            return res.json({ success: true, finished: true, dealer: gameState.dealer, results })
+            return res.json({ success: true, finished: true, dealerId: gameState.dealerId, results })
         }
 
         table.gameState = JSON.stringify(gameState)
@@ -797,42 +958,56 @@ router.post("/tables/:tableId/check-timeout", async (req: any, res) => {
         // Check timeout and handle if needed
         const wasTimeout = await checkAndHandleTimeout(table, gameState)
 
-        // If current turn became dealer, process dealer
-        if (wasTimeout && gameState.currentTurn === 'dealer') {
-            blackjack.dealerPlay(gameState)
+        // If game is finished (all players including dealer have played), calculate results
+        if (wasTimeout && gameState.currentTurn === 'finished') {
+            const dealerHand = gameState.players[gameState.dealerId]
 
-            // Calculate results for all players
+            // Calculate results for all non-dealer players
             const participants = await participantRepo.find({
                 where: { tableId: tableIdNum, status: "joined" }
             })
 
             const results: any[] = []
             for (const p of participants) {
-                const playerHand = JSON.parse(p.handState || "{}")
-                const winnings = blackjack.calculateWinnings(playerHand, gameState.dealer, p.currentBet)
-                const description = blackjack.getResultDescription(playerHand, gameState.dealer, winnings)
+                if (p.userId === gameState.dealerId) continue
+
+                const pHand = JSON.parse(p.handState || "{}")
+                const winnings = blackjack.calculateWinnings(pHand, dealerHand, p.currentBet)
+                const description = blackjack.getResultDescription(pHand, dealerHand, winnings)
 
                 const playerUser = await userRepo.findOne({ where: { id: p.userId } })
-                if (playerUser && winnings !== 0) {
-                    const payout = p.currentBet + winnings
-                    if (payout > 0) {
-                        playerUser.credit += payout
+                const dealerUser = await userRepo.findOne({ where: { id: gameState.dealerId } })
+
+                if (winnings > 0) {
+                    if (playerUser) {
+                        playerUser.credit += p.currentBet + winnings
                         await userRepo.save(playerUser)
                         const tx = transactionRepo.create({
                             userId: p.userId,
                             amount: winnings,
-                            type: winnings > 0 ? "win" : "lose",
+                            type: "win",
                             description: `Xì dách: ${description}`,
                             balanceAfter: playerUser.credit
                         })
                         await transactionRepo.save(tx)
                     }
-                } else if (playerUser && winnings === 0) {
-                    playerUser.credit += p.currentBet
-                    await userRepo.save(playerUser)
+                    if (dealerUser) {
+                        dealerUser.credit -= winnings
+                        await userRepo.save(dealerUser)
+                    }
+                } else if (winnings < 0) {
+                    if (dealerUser) {
+                        dealerUser.credit += p.currentBet
+                        await userRepo.save(dealerUser)
+                    }
+                } else {
+                    if (playerUser) {
+                        playerUser.credit += p.currentBet
+                        await userRepo.save(playerUser)
+                    }
                 }
 
-                results.push({ userId: p.userId, hand: playerHand, bet: p.currentBet, winnings, description })
+                results.push({ userId: p.userId, hand: pHand, bet: p.currentBet, winnings, description })
             }
 
             table.status = "finished"
@@ -841,10 +1016,10 @@ router.post("/tables/:tableId/check-timeout", async (req: any, res) => {
 
             try {
                 const io = getIO()
-                io.emit("games:game_finished", { tableId: tableIdNum, dealer: gameState.dealer, results })
+                io.emit("games:game_finished", { tableId: tableIdNum, dealerId: gameState.dealerId, results })
             } catch (e) { }
 
-            return res.json({ timedOut: true, finished: true, dealer: gameState.dealer, results })
+            return res.json({ timedOut: true, finished: true, dealerId: gameState.dealerId, results })
         }
 
         res.json({
@@ -854,6 +1029,62 @@ router.post("/tables/:tableId/check-timeout", async (req: any, res) => {
         })
     } catch (error) {
         console.error("Error checking timeout:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// POST /games/tables/:tableId/transfer-dealer - Transfer dealer role to another player
+router.post("/tables/:tableId/transfer-dealer", async (req: any, res) => {
+    try {
+        const user = await getUserFromResponse(res)
+        if (!user) return res.status(401).json({ error: "Unauthorized" })
+
+        const { tableId } = req.params
+        const { newDealerId } = req.body
+        const tableIdNum = parseInt(tableId)
+
+        if (!newDealerId) {
+            return res.status(400).json({ error: "newDealerId is required" })
+        }
+
+        const tableRepo = AppDataSource.getRepository(GameTable)
+        const participantRepo = AppDataSource.getRepository(GameTableParticipant)
+
+        const table = await tableRepo.findOne({ where: { id: tableIdNum } })
+        if (!table) {
+            return res.status(404).json({ error: "Table not found" })
+        }
+
+        if (table.status !== "waiting") {
+            return res.status(400).json({ error: "Chỉ có thể chuyển cái khi chưa bắt đầu" })
+        }
+
+        // Only current dealer or room owner can transfer
+        if (table.dealerId !== user.id && table.createdById !== user.id) {
+            return res.status(403).json({ error: "Chỉ nhà cái hoặc chủ phòng mới có thể chuyển cái" })
+        }
+
+        // Check if new dealer is in the table
+        const newDealerParticipant = await participantRepo.findOne({
+            where: { tableId: tableIdNum, userId: newDealerId, status: "joined" }
+        })
+        if (!newDealerParticipant) {
+            return res.status(400).json({ error: "Người chơi không có trong bàn" })
+        }
+
+        // Transfer dealer
+        table.dealerId = newDealerId
+        await tableRepo.save(table)
+
+        // Emit socket event
+        try {
+            const io = getIO()
+            io.emit("games:dealer_changed", { tableId: tableIdNum, dealerId: newDealerId })
+        } catch (e) { }
+
+        res.json({ success: true, dealerId: newDealerId })
+    } catch (error) {
+        console.error("Error transferring dealer:", error)
         res.status(500).json({ error: "Internal server error" })
     }
 })

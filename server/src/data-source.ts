@@ -23,6 +23,7 @@ import { AddAutoCheckInLog1734681200000 } from "./migrations/1734681200000-AddAu
 import { AddSelectedFrameToUser1735004000000 } from "./migrations/1735004000000-AddSelectedFrameToUser"
 import { AddConversationAvatar1766219051705 } from "./migrations/1766219051705-AddConversationAvatar"
 import { AddGamesFeature1735050000000 } from "./migrations/1735050000000-AddGamesFeature"
+import { AddDealerIdToGameTable1735100000000 } from "./migrations/1735100000000-AddDealerIdToGameTable"
 
 // Use absolute path to ensure same database in dev and prod
 const dbPath = path.resolve(__dirname, "../database.sqlite");
@@ -55,7 +56,8 @@ export const AppDataSource = new DataSource({
         AddAutoCheckInLog1734681200000,
         AddSelectedFrameToUser1735004000000,
         AddConversationAvatar1766219051705,
-        AddGamesFeature1735050000000
+        AddGamesFeature1735050000000,
+        AddDealerIdToGameTable1735100000000
     ],
     subscribers: [],
 })

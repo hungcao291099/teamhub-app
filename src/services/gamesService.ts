@@ -79,6 +79,16 @@ export const checkTimeout = async (tableId: number) => {
     return response.data;
 };
 
+export const playAgain = async (tableId: number) => {
+    const response = await api.post(`/games/tables/${tableId}/play-again`);
+    return response.data;
+};
+
+export const transferDealer = async (tableId: number, newDealerId: number) => {
+    const response = await api.post(`/games/tables/${tableId}/transfer-dealer`, { newDealerId });
+    return response.data;
+};
+
 export const TURN_TIMEOUT_MS = 30 * 1000; // 30 seconds
 
 // Game types (fixed list - only Blackjack for now)

@@ -31,6 +31,14 @@ export class GameTable {
     @JoinColumn({ name: "createdById" })
     createdBy: User
 
+    // Dealer (nhà cái) - defaults to room owner
+    @Column({ nullable: true })
+    dealerId: number
+
+    @ManyToOne(() => User)
+    @JoinColumn({ name: "dealerId" })
+    dealer: User
+
     @CreateDateColumn()
     createdAt: Date
 

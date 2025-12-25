@@ -1,4 +1,5 @@
-// Blackjack game logic helpers
+// Blackjack game logic helpers - Vietnamese rules (Xì Dách)
+// Human dealer model: one player is the dealer (nhà cái)
 
 export interface Card {
     suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
@@ -10,17 +11,20 @@ export interface Hand {
     cards: Card[];
     score: number;
     isBusted: boolean;
-    isBlackjack: boolean;
-    isDoubleAce: boolean; // Xì bàng
-    isFiveCard: boolean; // Ngũ linh
+    isBlackjack: boolean; // Xì dách (A + 10/J/Q/K)
+    isDoubleAce: boolean; // Xì bàng (2 lá A)
+    isFiveCard: boolean; // Ngũ linh (5 lá <= 21)
+    isNon: boolean; // Non (< 16 điểm, không có special)
 }
 
 export interface GameState {
     deck: Card[];
-    dealer: Hand;
-    players: { [oderId: number]: Hand };
-    currentTurn: number | 'dealer' | 'finished';
-    turnOrder: number[];
+    dealerId: number; // Human dealer ID
+    players: { [userId: number]: Hand }; // All players including dealer
+    currentTurn: number | 'finished';
+    turnOrder: number[]; // Player order (dealer is LAST)
+    immediateWinners: number[]; // Players with Xì Bàng/Xì Dách
+    turnStartTime?: number; // For timeout
 }
 
 // Create a shuffled deck
@@ -79,48 +83,73 @@ export function calculateScore(cards: Card[]): number {
 // Evaluate hand status
 export function evaluateHand(cards: Card[]): Hand {
     const score = calculateScore(cards);
+    const isDoubleAce = cards.length === 2 && cards.every(c => c.rank === 'A');
+    const isBlackjack = cards.length === 2 && score === 21 && !isDoubleAce;
+    const isFiveCard = cards.length === 5 && score <= 21;
+    const isBusted = score > 21;
+    const isNon = !isDoubleAce && !isBlackjack && !isFiveCard && !isBusted && score < 16;
 
     return {
         cards,
         score,
-        isBusted: score > 21,
-        isBlackjack: cards.length === 2 && score === 21,
-        isDoubleAce: cards.length === 2 && cards.every(c => c.rank === 'A'),
-        isFiveCard: cards.length === 5 && score <= 21
+        isBusted,
+        isBlackjack,
+        isDoubleAce,
+        isFiveCard,
+        isNon
     };
 }
 
-// Check if hand is "non" (under 16 points without special)
-export function isNon(hand: Hand): boolean {
-    if (hand.isBlackjack || hand.isDoubleAce || hand.isFiveCard) return false;
-    return hand.score < 16;
+// Get hand rank for comparison (higher = stronger)
+// Xì Bàng(5) > Xì Dách(4) > Ngũ Linh(3) > 16-21(2) > Non(1) > Quắc(0)
+export function getHandRank(hand: Hand): number {
+    if (hand.isDoubleAce) return 5; // Xì Bàng
+    if (hand.isBlackjack) return 4; // Xì Dách
+    if (hand.isFiveCard) return 3; // Ngũ Linh
+    if (hand.isBusted) return 0; // Quắc
+    if (hand.isNon) return 1; // Non
+    return 2; // Normal 16-21
 }
 
-// Deal initial 2 cards to each player and dealer
-export function dealInitialCards(state: GameState, playerIds: number[]): void {
-    // Deal 2 cards to each player
+// Check if player can stand (must have >= 16 points)
+export function canStand(hand: Hand): boolean {
+    if (hand.isDoubleAce || hand.isBlackjack || hand.isFiveCard) return true;
+    if (hand.isBusted) return true;
+    return hand.score >= 16;
+}
+
+// Deal initial 2 cards to each player (including dealer)
+export function dealInitialCards(state: GameState, playerIds: number[], dealerId: number): void {
+    state.immediateWinners = [];
+    state.dealerId = dealerId;
+
+    // Deal 2 cards to each player (including dealer)
     for (const playerId of playerIds) {
         const cards: Card[] = [];
         cards.push(drawCard(state.deck)!);
         cards.push(drawCard(state.deck)!);
         state.players[playerId] = evaluateHand(cards);
+
+        // Check instant win (Xì Bàng or Xì Dách) - except dealer
+        if (playerId !== dealerId) {
+            if (state.players[playerId].isDoubleAce || state.players[playerId].isBlackjack) {
+                state.immediateWinners.push(playerId);
+            }
+        }
     }
 
-    // Deal 2 cards to dealer
-    const dealerCards: Card[] = [];
-    dealerCards.push(drawCard(state.deck)!);
-    dealerCards.push(drawCard(state.deck)!);
-    state.dealer = evaluateHand(dealerCards);
-
-    // Set turn order
-    state.turnOrder = [...playerIds];
-    state.currentTurn = playerIds[0];
+    // Set turn order: non-dealers first, then dealer last
+    // Skip immediate winners
+    const nonDealers = playerIds.filter(id => id !== dealerId && !state.immediateWinners.includes(id));
+    state.turnOrder = [...nonDealers, dealerId];
+    state.currentTurn = state.turnOrder.length > 0 ? state.turnOrder[0] : 'finished';
+    state.turnStartTime = Date.now();
 }
 
 // Player hits - draw another card
 export function playerHit(state: GameState, playerId: number): Hand {
     const hand = state.players[playerId];
-    if (!hand || hand.isBusted) {
+    if (!hand || hand.isBusted || hand.isFiveCard) {
         return hand;
     }
 
@@ -137,81 +166,72 @@ export function playerHit(state: GameState, playerId: number): Hand {
 
 // Move to next turn
 export function nextTurn(state: GameState): void {
-    if (state.currentTurn === 'dealer' || state.currentTurn === 'finished') {
+    if (state.currentTurn === 'finished') {
         return;
     }
 
-    const currentIndex = state.turnOrder.indexOf(state.currentTurn);
+    const currentIndex = state.turnOrder.indexOf(state.currentTurn as number);
     if (currentIndex < state.turnOrder.length - 1) {
         state.currentTurn = state.turnOrder[currentIndex + 1];
     } else {
-        state.currentTurn = 'dealer';
+        state.currentTurn = 'finished';
     }
+    state.turnStartTime = Date.now();
 }
 
-// Dealer auto-play (hit until >= 17)
-export function dealerPlay(state: GameState): void {
-    while (state.dealer.score < 17 && !state.dealer.isBusted) {
-        const newCard = drawCard(state.deck);
-        if (newCard) {
-            state.dealer.cards.push(newCard);
-            state.dealer = evaluateHand(state.dealer.cards);
-        } else {
-            break;
-        }
-    }
-    state.currentTurn = 'finished';
+// Check if current turn is dealer
+export function isDealerTurn(state: GameState): boolean {
+    return state.currentTurn === state.dealerId;
 }
 
-// Calculate winnings for a player
+// Calculate winnings for a player vs dealer
 export function calculateWinnings(playerHand: Hand, dealerHand: Hand, bet: number): number {
-    // Player busted
+    const playerRank = getHandRank(playerHand);
+    const dealerRank = getHandRank(dealerHand);
+
+    // Both bust - Dealer wins
+    if (playerHand.isBusted && dealerHand.isBusted) {
+        return -bet;
+    }
+
+    // Player bust
     if (playerHand.isBusted) {
         return -bet;
     }
 
-    // Xì bàng (double aces) - wins 2:1
-    if (playerHand.isDoubleAce) {
-        if (dealerHand.isDoubleAce) return 0; // Push
-        return bet * 2;
-    }
-
-    // Xì dách (blackjack) - wins 1.5:1
-    if (playerHand.isBlackjack) {
-        if (dealerHand.isBlackjack || dealerHand.isDoubleAce) return 0; // Push or lose
-        return Math.floor(bet * 1.5);
-    }
-
-    // Ngũ linh (5 cards under 21) - wins 2:1
-    if (playerHand.isFiveCard) {
-        if (dealerHand.isFiveCard && dealerHand.score < playerHand.score) return -bet;
-        if (dealerHand.isDoubleAce || dealerHand.isBlackjack) return -bet;
-        return bet * 2;
-    }
-
-    // Non (under 16) - loses
-    if (isNon(playerHand)) {
-        return -bet;
-    }
-
-    // Dealer busted
+    // Dealer bust
     if (dealerHand.isBusted) {
+        if (playerHand.isDoubleAce) return bet * 2;
+        if (playerHand.isBlackjack) return Math.floor(bet * 1.5);
+        if (playerHand.isFiveCard) return bet * 2;
         return bet;
     }
 
-    // Dealer has special hand
-    if (dealerHand.isDoubleAce || dealerHand.isBlackjack || dealerHand.isFiveCard) {
+    // Compare ranks
+    if (playerRank > dealerRank) {
+        if (playerHand.isDoubleAce) return bet * 2;
+        if (playerHand.isBlackjack) return Math.floor(bet * 1.5);
+        if (playerHand.isFiveCard) return bet * 2;
+        return bet;
+    } else if (playerRank < dealerRank) {
         return -bet;
     }
 
-    // Compare scores
+    // Same rank - Ngũ Linh: lower score wins
+    if (playerHand.isFiveCard && dealerHand.isFiveCard) {
+        if (playerHand.score < dealerHand.score) return bet * 2;
+        if (playerHand.score > dealerHand.score) return -bet;
+        return 0;
+    }
+
+    // Same rank, compare scores
     if (playerHand.score > dealerHand.score) {
         return bet;
     } else if (playerHand.score < dealerHand.score) {
         return -bet;
     }
 
-    return 0; // Push (tie)
+    return 0; // Push
 }
 
 // Get result description
@@ -220,7 +240,7 @@ export function getResultDescription(playerHand: Hand, dealerHand: Hand, winning
     if (playerHand.isBlackjack) return 'Xì Dách! 🃏';
     if (playerHand.isFiveCard) return 'Ngũ Linh! ⭐';
     if (playerHand.isBusted) return 'Quắc! 💥';
-    if (isNon(playerHand)) return 'Non! 😢';
+    if (playerHand.isNon) return 'Non! 😢';
 
     if (winnings > 0) return 'Thắng! 💰';
     if (winnings < 0) return 'Thua! 😔';

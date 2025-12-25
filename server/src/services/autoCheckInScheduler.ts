@@ -1,10 +1,12 @@
 import axios from "axios";
+import crypto from "crypto";
 import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
 import { AutoCheckInLog } from "../entities/AutoCheckInLog";
 import { sendAutoCheckInNotification, sendDiscordNotification, DiscordEmbed } from "./discordNotification";
 
 const HRM_BASE_URL = "https://hrm.hungduy.vn";
+const SIGN_KEY = "OroFGCABgqY2qzvK51fwLfXRSPbjjedP";
 
 // Store daily random offsets for each user (reset each day)
 const userOffsets: Map<string, { checkIn: number[], checkOut: number[], date: string }> = new Map();
@@ -12,6 +14,33 @@ const userOffsets: Map<string, { checkIn: number[], checkOut: number[], date: st
 // Track token errors per shift period to only notify once per shift
 // Key: userId_shiftPeriod (e.g., "1_morning", "1_afternoon")
 const tokenErrorNotified: Map<string, string> = new Map(); // value is date string
+
+// Cache shift info per user - only fetched when tokenA is updated
+interface CachedShift {
+    Ma: string;
+    Code: string;
+    Ten: string;
+    fetchedAt: string; // date string for daily refresh
+}
+const userShiftCache: Map<number, CachedShift> = new Map();
+
+// Cache user "ma" from account info - for generating Sign
+const userMaCache: Map<number, string> = new Map();
+
+/**
+ * Generate Sign parameter for check-in API
+ * Sign = SHA512(Key + userMa + today in dd/MM/yyyy)
+ */
+function getSign(userMa: string): string {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const today = `${day}/${month}/${year}`;
+
+    const raw = SIGN_KEY + userMa + today;
+    return crypto.createHash('sha512').update(raw, 'utf8').digest('hex');
+}
 
 /**
  * Parse time from shift name
@@ -138,6 +167,14 @@ async function executeCheckInOut(
     try {
         const vao = action === "CHECK_IN" ? "1" : "0";
 
+        // Get user ma for Sign
+        const userMa = userMaCache.get(user.id);
+        if (!userMa) {
+            console.error(`[AutoCheckIn] No user ma cached for ${user.username}, cannot generate Sign`);
+            return;
+        }
+        const sign = getSign(userMa);
+
         const response = await axios.post(
             `${HRM_BASE_URL}/ChamCong/AddAPI`,
             null,
@@ -150,6 +187,7 @@ async function executeCheckInOut(
                     MaCaLamViec: shiftCode,
                     Vao: vao,
                     NgayGioCham: formatDateForHrm(new Date()),
+                    Sign: sign,
                 },
                 timeout: 30000,
             }
@@ -307,6 +345,71 @@ async function getUserWorkShift(user: User): Promise<{ Ma: string, Code: string,
 }
 
 /**
+ * Fetch and cache work shift for a user (call when tokenA is updated)
+ * Also fetches account info to get user "ma" for generating Sign
+ */
+export async function fetchAndCacheUserShift(user: User): Promise<void> {
+    console.log(`[AutoCheckIn] Fetching shift and account info for ${user.username}...`);
+
+    // Fetch shift
+    const shift = await getUserWorkShift(user);
+    if (shift) {
+        userShiftCache.set(user.id, {
+            ...shift,
+            fetchedAt: new Date().toISOString().split('T')[0]
+        });
+        console.log(`[AutoCheckIn] Cached shift for ${user.username}: ${shift.Ten}`);
+    } else {
+        userShiftCache.delete(user.id);
+        console.log(`[AutoCheckIn] No shift cached for ${user.username}`);
+    }
+
+    // Fetch account info to get user "ma" for Sign
+    try {
+        const response = await axios.post(
+            `${HRM_BASE_URL}/user/AccountInfo`,
+            {},
+            {
+                headers: {
+                    "token": user.tokenA,
+                },
+                timeout: 30000,
+            }
+        );
+
+        if (response.data.Status === "OK" && response.data.Data) {
+            const data = typeof response.data.Data === 'string'
+                ? JSON.parse(response.data.Data)
+                : response.data.Data;
+
+            if (data.ma) {
+                userMaCache.set(user.id, data.ma);
+                console.log(`[AutoCheckIn] Cached user ma for ${user.username}: ${data.ma}`);
+            }
+        }
+    } catch (error: any) {
+        console.error(`[AutoCheckIn] Failed to get account info for ${user.username}:`, error.message);
+    }
+}
+
+/**
+ * Get cached shift for a user
+ */
+function getCachedShift(userId: number): CachedShift | null {
+    const cached = userShiftCache.get(userId);
+    if (!cached) return null;
+
+    // Check if cache is still valid (same day)
+    const today = new Date().toISOString().split('T')[0];
+    if (cached.fetchedAt !== today) {
+        // Cache is stale, should be refreshed when tokenA is updated
+        // For now, still use it but log a warning
+        console.log(`[AutoCheckIn] Shift cache for user ${userId} is from ${cached.fetchedAt}, using anyway`);
+    }
+    return cached;
+}
+
+/**
  * Main scheduler function - runs every minute
  */
 async function runScheduler(): Promise<void> {
@@ -331,9 +434,12 @@ async function runScheduler(): Promise<void> {
         const currentTime = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 
         for (const user of users) {
-            // Get user's work shift
-            const shift = await getUserWorkShift(user);
-            if (!shift) continue;
+            // Get user's work shift from cache (fetched when tokenA is updated)
+            const shift = getCachedShift(user.id);
+            if (!shift) {
+                // No shift cached - will be fetched when user updates tokenA
+                continue;
+            }
 
             // Parse times from shift name
             const times = parseShiftTimes(shift.Ten);
@@ -372,18 +478,43 @@ async function runScheduler(): Promise<void> {
 let schedulerInterval: NodeJS.Timeout | null = null;
 
 /**
+ * Fetch shifts for all users with tokenA (called on startup)
+ */
+async function fetchAllUserShifts(): Promise<void> {
+    const userRepo = AppDataSource.getRepository(User);
+    const users = await userRepo
+        .createQueryBuilder("user")
+        .where("user.tokenA IS NOT NULL")
+        .andWhere("user.tokenA != ''")
+        .getMany();
+
+    console.log(`[AutoCheckIn] Fetching shifts for ${users.length} users with tokenA...`);
+
+    for (const user of users) {
+        await fetchAndCacheUserShift(user);
+    }
+
+    console.log(`[AutoCheckIn] Finished fetching shifts, cached ${userShiftCache.size} shifts`);
+}
+
+/**
  * Start the auto check-in scheduler
  */
 export function startAutoCheckInScheduler(): void {
     console.log("[AutoCheckIn] Starting scheduler...");
 
+    // Fetch all user shifts on startup
+    fetchAllUserShifts().catch(err => {
+        console.error("[AutoCheckIn] Error fetching initial shifts:", err);
+    });
+
     // Run every minute
     schedulerInterval = setInterval(runScheduler, 60 * 1000);
 
-    // Also run immediately on startup
-    runScheduler();
+    // Also run immediately on startup (will use cache after fetchAllUserShifts completes)
+    setTimeout(() => runScheduler(), 5000); // Wait 5s for initial fetch to complete
 
-    console.log("[AutoCheckIn] Scheduler started - checking every minute");
+    console.log("[AutoCheckIn] Scheduler started - checking every minute (shift fetch only on tokenA update)");
 }
 
 /**

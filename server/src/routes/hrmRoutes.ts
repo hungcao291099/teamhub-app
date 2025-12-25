@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import axios from "axios";
+import crypto from "crypto";
 import { checkJwt } from "../middlewares/checkJwt";
 import { checkRole } from "../middlewares/checkRole";
 import { AppDataSource } from "../data-source";
@@ -8,6 +9,22 @@ import { AutoCheckInLog } from "../entities/AutoCheckInLog";
 
 const router = Router();
 const HRM_BASE_URL = "https://hrm.hungduy.vn";
+const SIGN_KEY = "OroFGCABgqY2qzvK51fwLfXRSPbjjedP";
+
+/**
+ * Generate Sign parameter for check-in API
+ * Sign = SHA512(Key + userMa + today in dd/MM/yyyy)
+ */
+function getSign(userMa: string): string {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const today = `${day}/${month}/${year}`;
+
+    const raw = SIGN_KEY + userMa + today;
+    return crypto.createHash('sha512').update(raw, 'utf8').digest('hex');
+}
 
 /**
  * Format date to HRM API pattern: "yyyy/MM/dd HHmmss"
@@ -58,6 +75,41 @@ router.get("/ca-lam-viec", [checkJwt], async (req: Request, res: Response) => {
     }
 });
 
+// Get account info from HRM
+router.get("/account-info", [checkJwt], async (req: Request, res: Response) => {
+    try {
+        const userId = res.locals.jwtPayload.userId;
+        const userRepository = AppDataSource.getRepository(User);
+        const user = await userRepository.findOneOrFail({ where: { id: userId } });
+
+        if (!user.tokenA) {
+            res.status(400).json({ error: "Token A chưa được cấu hình" });
+            return;
+        }
+
+        const response = await axios.post(
+            `${HRM_BASE_URL}/user/AccountInfo`,
+            {},
+            {
+                headers: {
+                    "token": user.tokenA,
+                },
+                timeout: 30000,
+            }
+        );
+
+        // Parse the Data string if it's a string
+        if (response.data.Data && typeof response.data.Data === 'string') {
+            response.data.Data = JSON.parse(response.data.Data);
+        }
+
+        res.json(response.data);
+    } catch (error: any) {
+        console.error("HRM Account Info error:", error.message);
+        res.status(500).json({ error: "Không thể lấy thông tin tài khoản" });
+    }
+});
+
 // Check-in or Check-out
 router.post("/cham-cong", [checkJwt], async (req: Request, res: Response) => {
     try {
@@ -77,7 +129,33 @@ router.post("/cham-cong", [checkJwt], async (req: Request, res: Response) => {
             return;
         }
 
+        // Get user ma from account info for Sign
+        const accountResponse = await axios.post(
+            `${HRM_BASE_URL}/user/AccountInfo`,
+            {},
+            {
+                headers: {
+                    "token": user.tokenA,
+                },
+                timeout: 30000,
+            }
+        );
+
+        let userMa: string | null = null;
+        if (accountResponse.data.Status === "OK" && accountResponse.data.Data) {
+            const data = typeof accountResponse.data.Data === 'string'
+                ? JSON.parse(accountResponse.data.Data)
+                : accountResponse.data.Data;
+            userMa = data.ma;
+        }
+
+        if (!userMa) {
+            res.status(400).json({ error: "Không thể lấy mã user để tạo Sign" });
+            return;
+        }
+
         const ngayGioCham = formatDateForHrm(new Date());
+        const sign = getSign(userMa);
 
         const response = await axios.post(
             `${HRM_BASE_URL}/ChamCong/AddAPI`,
@@ -91,6 +169,7 @@ router.post("/cham-cong", [checkJwt], async (req: Request, res: Response) => {
                     MaCaLamViec: maCaLamViec,
                     Vao: vao,
                     NgayGioCham: ngayGioCham,
+                    Sign: sign,
                 },
                 timeout: 30000,
             }

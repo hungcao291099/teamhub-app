@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
 import { emitUserUpdate, emitForceLogout } from "../socket";
+import { fetchAndCacheUserShift } from "../services/autoCheckInScheduler";
 
 class UserController {
     static list = async (req: Request, res: Response) => {
@@ -42,6 +43,12 @@ class UserController {
             // tokenA: allow explicit update including empty string
             if (tokenA !== undefined) {
                 user.tokenA = tokenA;
+                // Fetch and cache shift when tokenA is updated
+                if (tokenA) {
+                    fetchAndCacheUserShift(user).catch(err => {
+                        console.error(`[UserController] Failed to fetch shift for ${user.username}:`, err.message);
+                    });
+                }
             }
             // selectedFrame: allow explicit update including null/empty to remove frame
             if (selectedFrame !== undefined) {
