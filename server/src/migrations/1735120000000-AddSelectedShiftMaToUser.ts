@@ -4,10 +4,16 @@ export class AddSelectedShiftMaToUser1735120000000 implements MigrationInterface
     name = 'AddSelectedShiftMaToUser1735120000000'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "user" ADD "selectedShiftMa" varchar`);
+        const table = await queryRunner.getTable("user");
+        if (table && !table.findColumnByName("selectedShiftMa")) {
+            await queryRunner.query(`ALTER TABLE "user" ADD "selectedShiftMa" varchar`);
+        }
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "user" DROP COLUMN "selectedShiftMa"`);
+        const table = await queryRunner.getTable("user");
+        if (table && table.findColumnByName("selectedShiftMa")) {
+            await queryRunner.query(`ALTER TABLE "user" DROP COLUMN "selectedShiftMa"`);
+        }
     }
 }
