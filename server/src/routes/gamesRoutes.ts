@@ -624,7 +624,7 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
             await participantRepo.save(p)
         }
 
-        // Handle immediate winners (Xì Bàng/Sò dép) - pay them now
+        // Handle immediate winners (Sỏ bàng/Sỏ dép) - pay them now
         const transactionRepo = AppDataSource.getRepository(CreditTransaction)
         const dealerUser = await userRepo.findOne({ where: { id: dealerId } })
         const dealerHand = gameState.players[dealerId]
@@ -649,7 +649,7 @@ router.post("/tables/:tableId/start", async (req: any, res) => {
                     userId: winnerId,
                     amount: winnings,
                     type: "win",
-                    description: `Sò dép (thắng trắng): ${description}`,
+                    description: `Sỏ dép (thắng trắng): ${description}`,
                     balanceAfter: winnerUser.credit
                 })
                 await transactionRepo.save(tx)
@@ -826,7 +826,7 @@ router.post("/tables/:tableId/stand", async (req: any, res) => {
                             userId: p.userId,
                             amount: winnings,
                             type: "win",
-                            description: `Sò dép: ${description}`,
+                            description: `Sỏ dép: ${description}`,
                             balanceAfter: playerUser.credit
                         })
                         await transactionRepo.save(tx)
@@ -952,7 +952,7 @@ router.post("/tables/:tableId/check-timeout", async (req: any, res) => {
                             userId: p.userId,
                             amount: winnings,
                             type: "win",
-                            description: `Sò dép: ${description}`,
+                            description: `Sỏ dép: ${description}`,
                             balanceAfter: playerUser.credit
                         })
                         await transactionRepo.save(tx)

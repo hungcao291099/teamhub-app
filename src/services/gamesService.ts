@@ -91,8 +91,8 @@ export const TURN_TIMEOUT_MS = 30 * 1000; // 30 seconds
 export const GAMES = [
     {
         id: "blackjack",
-        name: "Sò dép",
-        description: "Đạt 21 điểm hoặc gần nhất. Thắng 1:1, Sò dép 3:2",
+        name: "Sỏ dép",
+        description: "Đạt 21 điểm hoặc gần nhất. Thắng 1:1, Sỏ dép 3:2",
         icon: "🃏",
         minPlayers: 1,
         maxPlayers: 4,
