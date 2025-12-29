@@ -24,7 +24,6 @@ import { AddSelectedFrameToUser1735004000000 } from "./migrations/1735004000000-
 import { AddConversationAvatar1766219051705 } from "./migrations/1766219051705-AddConversationAvatar"
 import { AddGamesFeature1735050000000 } from "./migrations/1735050000000-AddGamesFeature"
 import { AddDealerIdToGameTable1735100000000 } from "./migrations/1735100000000-AddDealerIdToGameTable"
-import { AddSelectedShiftMaToUser1735120000000 } from "./migrations/1735120000000-AddSelectedShiftMaToUser"
 import { AddGameInvite1766645120831 } from "./migrations/1766645120831-AddGameInvite"
 
 // Use absolute path to ensure same database in dev and prod

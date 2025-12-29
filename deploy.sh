@@ -2,8 +2,11 @@
 
 # Deployment Script for TeamHub
 
+set -e  # Exit on any error
+
 echo "=========================================="
 echo "Starting Deployment Process..."
+echo "Date: $(date)"
 echo "=========================================="
 
 # 1. Pull latest code
@@ -14,22 +17,32 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 2. Install Dependencies
+# 2. Backup database before deploy
+echo ">> Backing up database..."
+BACKUP_DIR="./backups"
+mkdir -p "$BACKUP_DIR"
+if [ -f "./server/database.sqlite" ]; then
+    cp "./server/database.sqlite" "$BACKUP_DIR/database_$(date +%Y%m%d_%H%M%S).sqlite"
+    echo "   Database backed up to $BACKUP_DIR"
+    # Keep only last 5 backups
+    ls -t "$BACKUP_DIR"/database_*.sqlite 2>/dev/null | tail -n +6 | xargs -r rm --
+fi
+
+# 3. Install Dependencies
 echo ">> Installing root dependencies..."
-npm install
+npm install --legacy-peer-deps
 if [ $? -ne 0 ]; then
-    echo "Error: npm install failed"
-    # exit 1 (Optional: sometimes we might want to continue)
+    echo "Warning: npm install had issues, continuing..."
 fi
 
 echo ">> Installing server dependencies..."
-npm install --prefix server
+npm install --prefix server --legacy-peer-deps
 if [ $? -ne 0 ]; then
     echo "Error: Server npm install failed"
     exit 1
 fi
 
-# 3. Build Project
+# 4. Build Project
 echo ">> Building Frontend..."
 npm run build
 if [ $? -ne 0 ]; then
@@ -44,7 +57,12 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 4. Restart PM2
+# 5. Run Migrations (if any)
+echo ">> Running database migrations..."
+cd server && npm run typeorm migration:run -- -d ./dist/data-source.js 2>/dev/null || echo "   No pending migrations or migration skipped"
+cd ..
+
+# 6. Restart PM2
 echo ">> Restarting PM2 process..."
 # Create logs directory if not exists
 mkdir -p logs
@@ -61,6 +79,7 @@ if [ $? -eq 0 ]; then
     echo "=========================================="
     echo "✅ Deployment Successful!"
     echo "=========================================="
+    pm2 status
 else
     echo "=========================================="
     echo "❌ PM2 Restart Failed!"
