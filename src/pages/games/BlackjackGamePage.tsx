@@ -333,11 +333,15 @@ export function BlackjackGamePage() {
                 )}
 
                 {/* Draw/Stand Actions - OVERLAID on table for easy reach */}
-                {isMyTurn && isPlaying && myHand && !myHand.isBusted && myHand.cards.length < 5 && (
+                {isMyTurn && isPlaying && myHand && (
                     <div className="absolute bottom-[22%] md:bottom-[30%] left-1/2 -translate-x-1/2 z-40 flex gap-4">
-                        <Button onClick={handleHit} disabled={actionLoading} size="default" className="bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 text-white font-black px-6 py-4 md:py-6 rounded-xl shadow-lg active:translate-y-1 transition-all">
-                            <Hand className="h-4 w-4 mr-2" /> RÚT
-                        </Button>
+                        {/* Hide HIT when busted or 5 cards */}
+                        {!myHand.isBusted && myHand.cards.length < 5 && (
+                            <Button onClick={handleHit} disabled={actionLoading} size="default" className="bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 text-white font-black px-6 py-4 md:py-6 rounded-xl shadow-lg active:translate-y-1 transition-all">
+                                <Hand className="h-4 w-4 mr-2" /> RÚT
+                            </Button>
+                        )}
+                        {/* Always show DỪNG when it's my turn */}
                         <Button variant="secondary" onClick={handleStand} disabled={actionLoading || !canIStand} size="default" className="bg-gradient-to-b from-orange-400 to-orange-600 hover:from-orange-300 hover:to-orange-500 text-white font-black px-6 py-4 md:py-6 rounded-xl shadow-lg active:translate-y-1 transition-all">
                             <Square className="h-4 w-4 mr-2" /> DỪNG
                         </Button>
