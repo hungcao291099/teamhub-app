@@ -120,7 +120,7 @@ export function BlackjackGamePage() {
     const { gameType, tableId } = useParams();
     const navigate = useNavigate();
     const { credit, refreshCredit } = useGames();
-    const { currentUser } = useAuth();
+    const { currentUser, socket } = useAuth();
 
     const [table, setTable] = useState<TableData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -132,6 +132,8 @@ export function BlackjackGamePage() {
     const [turnStartTime, setTurnStartTime] = useState<number | null>(null);
     const [timeRemaining, setTimeRemaining] = useState<number>(30);
     const [dealerId, setDealerId] = useState<number | null>(null);
+    const [isDealing, setIsDealing] = useState(false);
+    const [instantWin, setInstantWin] = useState<{ type: 'player' | 'dealer'; description: string } | null>(null);
 
     const game = GAMES.find(g => g.id === gameType);
     const tableIdNum = parseInt(tableId || "0");
@@ -174,12 +176,51 @@ export function BlackjackGamePage() {
         update(); const i = setInterval(update, 1000); return () => clearInterval(i);
     }, [turnStartTime, isPlaying, tableIdNum, loadTable]);
 
+    // Socket listener for game finished events (when another player's action ends the game)
+    useEffect(() => {
+        if (!socket || !tableIdNum) return;
+
+        const handleGameFinished = (data: { tableId: number; results: any[]; dealerInstantWin?: boolean }) => {
+            if (data.tableId === tableIdNum) {
+                setResults(data.results);
+                refreshCredit();
+                // Check for dealer instant win
+                if (data.dealerInstantWin) {
+                    const dealerResult = data.results?.find((r: any) => r.isDealer);
+                    setInstantWin({ type: 'dealer', description: dealerResult?.description || 'Nhà cái thắng trắng!' });
+                }
+                loadTable();
+            }
+        };
+
+        socket.on("games:game_finished", handleGameFinished);
+        return () => { socket.off("games:game_finished", handleGameFinished); };
+    }, [socket, tableIdNum, refreshCredit, loadTable]);
+
+    // Socket listener for game started events (trigger dealing animation)
+    useEffect(() => {
+        if (!socket || !tableIdNum) return;
+
+        const handleGameStarted = (data: { tableId: number }) => {
+            if (data.tableId === tableIdNum) {
+                setIsDealing(true);
+                setInstantWin(null); // Clear any previous instant win
+                setResults(null); // Clear previous results
+                setTimeout(() => setIsDealing(false), 1500); // Animation duration
+                loadTable();
+            }
+        };
+
+        socket.on("games:game_started", handleGameStarted);
+        return () => { socket.off("games:game_started", handleGameStarted); };
+    }, [socket, tableIdNum, loadTable]);
+
     const handleLeave = async () => { setActionLoading(true); try { await leaveTable(tableIdNum); toast.success("Đã rời"); navigate(`/games/${gameType}`); } catch (e: any) { toast.error(e.response?.data?.error || "Lỗi"); } finally { setActionLoading(false); } };
     const handleBet = async () => { const a = parseInt(betAmount); if (isNaN(a) || a < 10) { toast.error("Min 10"); return; } if (a > credit) { toast.error("Thiếu credit"); return; } setActionLoading(true); try { await placeBet(tableIdNum, a); toast.success("Đã đặt cược!"); loadTable(); } catch (e: any) { toast.error(e.response?.data?.error || "Lỗi"); } finally { setActionLoading(false); } };
     const handleStart = async () => { setActionLoading(true); try { await startGame(tableIdNum); toast.success("Khai xuân!"); loadTable(); } catch (e: any) { toast.error(e.response?.data?.error || "Lỗi"); } finally { setActionLoading(false); } };
     const handleHit = async () => { setActionLoading(true); try { const r = await hit(tableIdNum); setMyHand(r.hand); setCurrentTurn(r.currentTurn); if (r.hand.isBusted) toast.error("Quắc rồi!"); loadTable(); } catch (e: any) { toast.error(e.response?.data?.error || "Lỗi"); } finally { setActionLoading(false); } };
     const handleStand = async () => { setActionLoading(true); try { const r = await stand(tableIdNum); if (r.finished) { setResults(r.results); refreshCredit(); toast.success("Kết thúc ván!"); } loadTable(); } catch (e: any) { toast.error(e.response?.data?.error || "Lỗi"); } finally { setActionLoading(false); } };
-    const handlePlayAgain = async () => { setActionLoading(true); try { await playAgain(tableIdNum); toast.success("Ván mới!"); setMyHand(null); setResults(null); loadTable(); } catch (e: any) { toast.error(e.response?.data?.error || "Lỗi"); } finally { setActionLoading(false); } };
+    const handlePlayAgain = async () => { setActionLoading(true); try { await playAgain(tableIdNum); toast.success("Ván mới!"); setMyHand(null); setResults(null); setInstantWin(null); loadTable(); } catch (e: any) { toast.error(e.response?.data?.error || "Lỗi"); } finally { setActionLoading(false); } };
     const handleTransferDealer = async (id: number) => { setActionLoading(true); try { await transferDealer(tableIdNum, id); toast.success("Đã chuyển quyền cầm cái"); loadTable(); } catch (e: any) { toast.error(e.response?.data?.error || "Lỗi"); } finally { setActionLoading(false); } };
 
     if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-amber-500" /></div>;
@@ -303,20 +344,55 @@ export function BlackjackGamePage() {
                     </div>
                 )}
 
+                {/* Dealing Animation Overlay */}
+                {isDealing && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="text-center">
+                            <div className="text-6xl mb-4 animate-bounce">🃏</div>
+                            <h2 className="text-2xl font-black text-amber-400 uppercase tracking-wider">Đang chia bài...</h2>
+                        </div>
+                    </div>
+                )}
+
+                {/* Instant Win Overlay (Xì Bàn / Xì Dách) */}
+                {instantWin && (
+                    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-sm animate-in fade-in zoom-in duration-500">
+                        <div className="text-center">
+                            <div className="text-7xl mb-4 animate-bounce">
+                                {instantWin.type === 'dealer' ? '👑' : '🎉'}
+                            </div>
+                            <h2 className="text-3xl font-black text-amber-400 uppercase tracking-tight mb-2">
+                                {instantWin.type === 'dealer' ? 'NHÀ CÁI THẮNG TRẮNG!' : 'THẮNG TRẮNG!'}
+                            </h2>
+                            <p className="text-xl text-white mb-6">{instantWin.description}</p>
+                            {isOwner && (
+                                <div className="flex gap-3 justify-center">
+                                    <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-black font-bold" onClick={handlePlayAgain} disabled={actionLoading}>
+                                        <RotateCcw className="h-4 w-4 mr-2" /> VÁN MỚI
+                                    </Button>
+                                    <Button size="lg" variant="destructive" onClick={handleLeave} disabled={actionLoading}>
+                                        <LogOut className="h-4 w-4 mr-2" /> NGHỈ
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Result High-End Overlay */}
-                {isFinished && myResult && (
+                {isFinished && !instantWin && (myResult || isDealer) && (
                     <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4">
-                        <div className={`relative w-full max-w-[320px] p-1 rounded-3xl bg-gradient-to-b ${myResult.winnings > 0 ? "from-amber-400 to-yellow-600" : myResult.winnings < 0 ? "from-red-600 to-red-900" : "from-gray-400 to-gray-600"}`}>
+                        <div className={`relative w-full max-w-[320px] p-1 rounded-3xl bg-gradient-to-b ${isDealer ? "from-yellow-400 to-amber-600" : myResult?.winnings > 0 ? "from-amber-400 to-yellow-600" : myResult?.winnings < 0 ? "from-red-600 to-red-900" : "from-gray-400 to-gray-600"}`}>
                             <Card className="bg-gray-950 border-none rounded-[1.4rem] overflow-hidden">
                                 <CardContent className="p-6 text-center flex flex-col items-center gap-3">
                                     <div className="text-4xl mb-1">
-                                        {myResult.winnings > 0 ? "🧧" : myResult.winnings < 0 ? "💸" : "🤝"}
+                                        {isDealer ? "👑" : myResult?.winnings > 0 ? "🧧" : myResult?.winnings < 0 ? "💸" : "🤝"}
                                     </div>
-                                    <h3 className={`text-xl font-black uppercase tracking-tighter ${myResult.winnings > 0 ? "text-amber-400" : myResult.winnings < 0 ? "text-red-500" : "text-gray-400"}`}>
-                                        {myResult.description}
+                                    <h3 className={`text-xl font-black uppercase tracking-tighter ${isDealer ? "text-yellow-400" : myResult?.winnings > 0 ? "text-amber-400" : myResult?.winnings < 0 ? "text-red-500" : "text-gray-400"}`}>
+                                        {isDealer ? "KẾT THÚC VÁN" : myResult?.description}
                                     </h3>
                                     <p className="text-3xl font-black text-white">
-                                        {myResult.winnings > 0 ? `+${myResult.winnings.toLocaleString()}` : myResult.winnings.toLocaleString()}
+                                        {isDealer ? "Nhà Cái" : myResult?.winnings > 0 ? `+${myResult.winnings.toLocaleString()}` : myResult?.winnings?.toLocaleString()}
                                     </p>
                                     <div className="flex gap-2 mt-4 w-full">
                                         {isOwner ? (
