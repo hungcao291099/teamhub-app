@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
-    "dev:client": "vite",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\" \"npm run dev:mobile\"",
+    "dev:client": "vite --host",
     "dev:server": "cd server && npm run dev",
+    "dev:mobile": "cd app && npx expo start",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

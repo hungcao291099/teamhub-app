@@ -7,4 +7,8 @@ const router = Router();
 router.get("/theme", getTheme);
 router.post("/theme", checkJwt, updateTheme);
 
+import { getAutoCheckInConfig, updateAutoCheckInConfig } from "../controllers/GlobalSettingsController";
+router.get("/auto-checkin", getAutoCheckInConfig);
+router.post("/auto-checkin", [checkJwt], updateAutoCheckInConfig);
+
 export default router;

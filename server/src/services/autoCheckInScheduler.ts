@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
 import { AutoCheckInLog } from "../entities/AutoCheckInLog";
+import { GlobalSetting } from "../entities/GlobalSetting";
 import { sendAutoCheckInNotification, sendDiscordNotification, DiscordEmbed } from "./discordNotification";
 
 const HRM_BASE_URL = "https://hrm.hungduy.vn";
@@ -360,6 +361,13 @@ async function getUserWorkShift(user: User): Promise<{ Ma: string, Code: string,
  * Also fetches account info to get user "ma" for generating Sign
  */
 export async function fetchAndCacheUserShift(user: User): Promise<void> {
+    const settingRepo = AppDataSource.getRepository(GlobalSetting);
+    const setting = await settingRepo.findOne({ where: { key: 'auto_checkin_enabled' } });
+    if (setting && setting.value === 'false') {
+        console.log(`[AutoCheckIn] Skipping fetch for ${user.username} - Auto check-in is disabled`);
+        return;
+    }
+
     console.log(`[AutoCheckIn] Fetching shift and account info for ${user.username}...`);
 
     // Fetch shift
@@ -425,6 +433,12 @@ function getCachedShift(userId: number): CachedShift | null {
  */
 async function runScheduler(): Promise<void> {
     try {
+        const settingRepo = AppDataSource.getRepository(GlobalSetting);
+        const setting = await settingRepo.findOne({ where: { key: 'auto_checkin_enabled' } });
+        if (setting && setting.value === 'false') {
+            return;
+        }
+
         // Skip Sundays (Chủ nhật) - getDay() returns 0 for Sunday
         const now = new Date();
         if (now.getDay() === 0) {

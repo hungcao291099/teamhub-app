@@ -6,6 +6,7 @@ import { getLogs, AutoCheckInLog } from "@/services/logService";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { RefreshCw, Terminal, Send } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 const pageAnimation = {
     initial: { opacity: 0, y: 10 },
@@ -17,9 +18,32 @@ export function LogConsolePage() {
     const [logs, setLogs] = useState<AutoCheckInLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [autoRefresh, setAutoRefresh] = useState(true);
     const [testingWebhook, setTestingWebhook] = useState(false);
+    const [autoMode, setAutoMode] = useState(true);
+    const [updatingAutoMode, setUpdatingAutoMode] = useState(false);
     const consoleRef = useRef<HTMLDivElement>(null);
+
+    const fetchAutoModeConfig = async () => {
+        try {
+            const response = await api.get("/settings/auto-checkin");
+            setAutoMode(response.data.enabled);
+        } catch (err) {
+            console.error("Failed to fetch auto mode config", err);
+        }
+    };
+
+    const toggleAutoMode = async (enabled: boolean) => {
+        setUpdatingAutoMode(true);
+        try {
+            await api.post("/settings/auto-checkin", { enabled });
+            setAutoMode(enabled);
+            toast.success(`Đã ${enabled ? "bật" : "tắt"} chế độ Auto`);
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Không thể cập nhật cấu hình");
+        } finally {
+            setUpdatingAutoMode(false);
+        }
+    };
 
     const fetchLogs = async () => {
         try {
@@ -47,14 +71,15 @@ export function LogConsolePage() {
 
     useEffect(() => {
         fetchLogs();
+        fetchAutoModeConfig();
     }, []);
 
-    // Auto refresh every 30 seconds
+    // Auto refresh every 30 seconds if autoMode is enabled
     useEffect(() => {
-        if (!autoRefresh) return;
+        if (!autoMode) return;
         const interval = setInterval(fetchLogs, 30000);
         return () => clearInterval(interval);
-    }, [autoRefresh]);
+    }, [autoMode]);
 
     // Auto scroll to bottom on new logs
     useEffect(() => {
@@ -97,16 +122,13 @@ export function LogConsolePage() {
                     <Terminal className="h-8 w-8" />
                     Auto Check-in Logs
                 </h1>
-                <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 text-sm">
-                        <input
-                            type="checkbox"
-                            checked={autoRefresh}
-                            onChange={(e) => setAutoRefresh(e.target.checked)}
-                            className="rounded"
-                        />
-                        Auto refresh (30s)
-                    </label>
+                <div className="flex items-center gap-6">
+                    <Switch
+                        label="Chế độ Auto (Chấm công & Refresh)"
+                        checked={autoMode}
+                        onCheckedChange={toggleAutoMode}
+                        disabled={updatingAutoMode}
+                    />
                     <Button
                         variant="outline"
                         size="sm"

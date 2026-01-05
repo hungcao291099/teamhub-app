@@ -352,6 +352,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 
         participants.forEach(p => {
             io.to(`user_${p.userId}_web`).emit("chat:message", messageData);
+            io.to(`user_${p.userId}_mobile`).emit("chat:message", messageData);
         });
 
         res.json(messageData);
@@ -385,11 +386,14 @@ export const editMessage = async (req: Request, res: Response) => {
         // Emit to participants
         const io = getIO();
         message.conversation.participants.forEach(p => {
-            io.to(`user_${p.userId}_web`).emit("chat:message_edited", {
+            const editData = {
                 messageId: message.id,
+                conversationId: message.conversationId,
                 content: decrypt(message.content),
                 isEdited: true
-            });
+            };
+            io.to(`user_${p.userId}_web`).emit("chat:message_edited", editData);
+            io.to(`user_${p.userId}_mobile`).emit("chat:message_edited", editData);
         });
 
         res.json({ success: true });
@@ -442,9 +446,9 @@ export const deleteMessage = async (req: Request, res: Response) => {
         // Emit to participants
         const io = getIO();
         message.conversation.participants.forEach(p => {
-            io.to(`user_${p.userId}_web`).emit("chat:message_deleted", {
-                messageId: message.id
-            });
+            const deleteData = { messageId: message.id, conversationId: message.conversationId };
+            io.to(`user_${p.userId}_web`).emit("chat:message_deleted", deleteData);
+            io.to(`user_${p.userId}_mobile`).emit("chat:message_deleted", deleteData);
         });
 
         res.json({ success: true });
@@ -505,11 +509,9 @@ export const markAsRead = async (req: Request, res: Response) => {
 
         participants.forEach(p => {
             if (p.userId !== userId) {
-                io.to(`user_${p.userId}_web`).emit("chat:message_read", {
-                    conversationId: convId,
-                    userId,
-                    messageId: msgId
-                });
+                const readData = { conversationId: convId, userId, messageId: msgId };
+                io.to(`user_${p.userId}_web`).emit("chat:message_read", readData);
+                io.to(`user_${p.userId}_mobile`).emit("chat:message_read", readData);
             }
         });
 

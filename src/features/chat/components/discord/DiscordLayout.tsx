@@ -50,7 +50,7 @@ export const DiscordLayout: React.FC<DiscordLayoutProps> = ({ open, onOpenChange
                         ) : (
                             <div className="flex-1 flex items-center justify-center flex-col text-muted-foreground gap-4">
                                 <div className="p-4 bg-accent/20 rounded-full">
-                                    <img src="/logo.png" className="w-16 h-16 opacity-50 grayscale" alt="Logo" />
+                                    <img src="/teamhub-logo.png" className="w-16 h-16 opacity-50 grayscale" alt="Logo" />
                                 </div>
                                 <div className="text-center">
                                     <h3 className="font-semibold text-xl mb-1">Welcome to TeamHub Chat</h3>
