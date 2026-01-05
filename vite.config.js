@@ -19,6 +19,42 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/hrm': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/auth': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/events': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/funds': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/duty': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/users': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/chat': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/music': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/games': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
       '/app': {
         target: 'http://localhost:3001',
         changeOrigin: true,
