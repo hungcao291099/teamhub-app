@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { User } from "../entities/User";
 import { emitUserUpdate, emitForceLogout } from "../socket";
-import { fetchAndCacheUserShift } from "../services/autoCheckInScheduler";
 
 class UserController {
     static list = async (req: Request, res: Response) => {
@@ -32,7 +31,7 @@ class UserController {
 
     static update = async (req: Request, res: Response) => {
         const id = parseInt(req.params.id);
-        const { name, role, avatarUrl, isActive, tokenA, selectedFrame, selectedShiftMa } = req.body;
+        const { name, role, avatarUrl, isActive, selectedFrame } = req.body;
         const userRepository = AppDataSource.getRepository(User);
         try {
             let user = await userRepository.findOneOrFail({ where: { id } });
@@ -40,29 +39,10 @@ class UserController {
             user.role = role ?? user.role;
             user.avatarUrl = avatarUrl ?? user.avatarUrl;
             user.isActive = isActive ?? user.isActive;
-            // tokenA: allow explicit update including empty string
-            if (tokenA !== undefined) {
-                user.tokenA = tokenA;
-                // Fetch and cache shift when tokenA is updated
-                if (tokenA) {
-                    fetchAndCacheUserShift(user).catch(err => {
-                        console.error(`[UserController] Failed to fetch shift for ${user.username}:`, err.message);
-                    });
-                }
-            }
+
             // selectedFrame: allow explicit update including null/empty to remove frame
             if (selectedFrame !== undefined) {
                 user.selectedFrame = selectedFrame || null;
-            }
-            // selectedShiftMa: allow explicit update including null/empty to clear selection
-            if (selectedShiftMa !== undefined) {
-                user.selectedShiftMa = selectedShiftMa || null;
-                // Update cache if shift is changed
-                if (user.tokenA) {
-                    fetchAndCacheUserShift(user).catch(err => {
-                        console.error(`[UserController] Failed to update cached shift for ${user.username}:`, err.message);
-                    });
-                }
             }
             await userRepository.save(user);
 

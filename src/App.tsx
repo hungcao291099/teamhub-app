@@ -1,5 +1,5 @@
 // src/App.tsx
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { MainLayout } from "@/layouts/MainLayout";
 import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 import { Toaster } from "sonner"; // Import Toaster
@@ -24,7 +24,6 @@ import { DocumentTitleUpdater } from "@/components/common/DocumentTitleUpdater";
 import { MusicProvider } from "@/context/MusicContext";
 import { MusicFAB } from "@/components/music/MusicFAB";
 import MusicPage from "@/pages/MusicPage";
-import { LogConsolePage } from "@/pages/LogConsolePage";
 
 // Games pages
 import { GamesLayout } from "@/pages/games/GamesLayout";
@@ -67,7 +66,7 @@ function App() {
                 <Route path="utilities/team-calendar" element={<TeamCalendarPage />} />
                 <Route path="utilities/theme-event" element={<ThemeEventPage />} />
                 <Route path="music" element={<MusicPage />} />
-                <Route path="logs" element={<LogConsolePage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
 
               {/* Games routes - separate layout */}
@@ -102,7 +101,6 @@ function App() {
 }
 
 // Wrapper component to provide MusicContext and MusicFAB
-import { Outlet } from "react-router-dom";
 
 function MusicProviderWrapper() {
   return (

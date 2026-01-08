@@ -24,13 +24,7 @@ export class User {
     isActive: boolean
 
     @Column({ nullable: true })
-    tokenA: string
-
-    @Column({ nullable: true })
     selectedFrame: string
-
-    @Column({ nullable: true })
-    selectedShiftMa: string
 
     @Column({ type: "integer", default: 1000 })
     credit: number

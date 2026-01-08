@@ -13,7 +13,6 @@ import settingsRoutes from "./routes/settings";
 import appRoutes from "./routes/app";
 import chatRoutes from "./routes/chatRoutes";
 import musicRoutes from "./routes/musicRoutes";
-import hrmRoutes from "./routes/hrmRoutes";
 import gamesRoutes from "./routes/gamesRoutes";
 import { User } from "./entities/User";
 import { initSocket } from "./socket";
@@ -40,7 +39,6 @@ app.use("/settings", settingsRoutes);
 app.use("/app", appRoutes);
 app.use("/chat", chatRoutes);
 app.use("/music", musicRoutes);
-app.use("/hrm", hrmRoutes);
 app.use("/games", gamesRoutes);
 
 const httpServer = createServer(app);
@@ -55,9 +53,6 @@ AppDataSource.initialize().then(async () => {
         console.error("Migration failed:", e);
     }
 
-    // Start auto check-in scheduler
-    const { startAutoCheckInScheduler } = await import("./services/autoCheckInScheduler");
-    startAutoCheckInScheduler();
 
     // Seed Admin User
     const userRepo = AppDataSource.getRepository(User);

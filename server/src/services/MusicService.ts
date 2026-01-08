@@ -146,10 +146,10 @@ export function startVote(
         return null;
     }
 
-    // Calculate required votes (>50% of online users)
-    const requiredVotes = Math.floor(onlineCount / 2) + 1;
+    // Calculate required votes (>= 50% of online users)
+    const requiredVotes = Math.max(1, Math.ceil(onlineCount / 2));
 
-    voteState = {
+    const newVote: VoteState = {
         actionType,
         songTitle: musicState.currentMusic?.title || "Unknown",
         initiatorId: userId,
@@ -161,11 +161,23 @@ export function startVote(
         expiresAt: Date.now() + 30000 // 30 seconds
     };
 
+    // Check if requirement is met immediately (e.g. online count is 1 or 2)
+    if (newVote.votes.length >= newVote.requiredVotes) {
+        voteState = newVote; // Set temporarily for execution
+        executeVoteAction();
+        voteState = null;
+        if (onVoteChange) {
+            onVoteChange(newVote, 'passed');
+        }
+        return newVote;
+    }
+
+    voteState = newVote;
     broadcastVote();
 
     // Set auto-expire timer
     setTimeout(() => {
-        if (voteState && voteState.startedAt === voteState.startedAt) {
+        if (voteState && voteState.startedAt === newVote.startedAt) {
             clearExpiredVote();
         }
     }, 30000);

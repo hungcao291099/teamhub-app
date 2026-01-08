@@ -56,7 +56,7 @@ class AuthController {
         );
 
         // Send the jwt in the response
-        res.send({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role, avatarUrl: user.avatarUrl, tokenA: user.tokenA } });
+        res.send({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role, avatarUrl: user.avatarUrl } });
     };
 
     static createUser = async (req: Request, res: Response) => {

@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth.js";
 import { streamCurrentUser } from "@/services/userService";
-import { getCaLamViecByUser, chamCong } from "@/services/hrmApiService";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,10 +27,6 @@ export function MyAccountPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
-  // Work shift states
-  const [caLamViec, setCaLamViec] = useState(null); // First work shift
-  const [isCheckingIn, setIsCheckingIn] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // "Nghe" (stream) dữ liệu của user này
   // Sync realtime from Context to local state
@@ -40,84 +35,11 @@ export function MyAccountPage() {
       setUserData(currentUser);
       setLoading(false);
 
-      // Load work shifts if user has tokenA
-      if (currentUser.tokenA) {
-        loadCaLamViec(currentUser.tokenA);
-      }
+      setUserData(currentUser);
+      setLoading(false);
     }
   }, [currentUser, currentUser?.selectedShiftMa, currentUser?.tokenA]);
 
-  // Load work shifts
-  const loadCaLamViec = async (tokenA) => {
-    try {
-      const result = await getCaLamViecByUser(tokenA);
-      if (result.Status === "OK" && result.Data) {
-        // Parse Data if it's a string
-        const shifts = typeof result.Data === 'string' ? JSON.parse(result.Data) : result.Data;
-
-        if (Array.isArray(shifts) && shifts.length > 0) {
-          // Priority: find shift that user has selected
-          if (userData?.selectedShiftMa) {
-            const selectedShift = shifts.find(shift => shift.Ma === userData.selectedShiftMa);
-            if (selectedShift) {
-              setCaLamViec(selectedShift);
-              return;
-            }
-          }
-          // Fallback to first shift
-          setCaLamViec(shifts[0]);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load work shifts:", error);
-    }
-  };
-
-  // Handle check-in
-  const handleCheckIn = async () => {
-    if (!userData?.tokenA || !caLamViec) {
-      toast.error("Vui lòng cấu hình Token A và ca làm việc trước");
-      return;
-    }
-
-    setIsCheckingIn(true);
-    try {
-      const result = await chamCong(userData.tokenA, caLamViec.Ma, "1");
-      if (result.Status === "OK") {
-        toast.success("Vào ca thành công!");
-      } else {
-        toast.error(result.Messenge || "Vào ca thất bại");
-      }
-    } catch (error) {
-      console.error("Check-in failed:", error);
-      toast.error("Vào ca thất bại. Vui lòng thử lại.");
-    } finally {
-      setIsCheckingIn(false);
-    }
-  };
-
-  // Handle check-out
-  const handleCheckOut = async () => {
-    if (!userData?.tokenA || !caLamViec) {
-      toast.error("Vui lòng cấu hình Token A và ca làm việc trước");
-      return;
-    }
-
-    setIsCheckingOut(true);
-    try {
-      const result = await chamCong(userData.tokenA, caLamViec.Ma, "0");
-      if (result.Status === "OK") {
-        toast.success("Ra ca thành công!");
-      } else {
-        toast.error(result.Messenge || "Ra ca thất bại");
-      }
-    } catch (error) {
-      console.error("Check-out failed:", error);
-      toast.error("Ra ca thất bại. Vui lòng thử lại.");
-    } finally {
-      setIsCheckingOut(false);
-    }
-  };
 
   if (loading) {
     return <AccountSkeleton />; // Hiển thị skeleton
@@ -139,23 +61,28 @@ export function MyAccountPage() {
       <h1 className="text-3xl font-bold">Tài khoản của tôi</h1>
 
       {/* --- CARD THÔNG TIN CÁ NHÂN --- */}
-      <Card className="max-w-2xl">
-        <CardHeader className="flex flex-col items-center text-center">
-          <AvatarWithFrame frameId={userData.selectedFrame} size="xl">
-            <Avatar className="w-32 h-32 mb-4">
-              <AvatarImage
-                src={userData.avatarUrl || `https://i.pravatar.cc/150?u=${userData.id}`}
-                alt={userData.name}
-              />
-              <AvatarFallback className="text-5xl">
-                {userData.name?.[0]}
-              </AvatarFallback>
-            </Avatar>
-          </AvatarWithFrame>
-          <CardTitle className="text-3xl">{userData.name}</CardTitle>
-          <CardDescription>@{userData.username}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <Card className="max-w-3xl">
+        {!isEditing && (
+          <CardHeader className="flex flex-col items-center text-center">
+            <div className="p-6 mb-4">
+              <AvatarWithFrame frameId={userData.selectedFrame} size="xl">
+                <Avatar className="w-32 h-32 mb-0 border-none shadow-none">
+                  <AvatarImage
+                    src={userData.avatarUrl || `https://i.pravatar.cc/150?u=${userData.id}`}
+                    alt={userData.name}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="text-5xl border-none">
+                    {userData.name?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+              </AvatarWithFrame>
+            </div>
+            <CardTitle className="text-3xl">{userData.name}</CardTitle>
+            <CardDescription>@{userData.username}</CardDescription>
+          </CardHeader>
+        )}
+        <CardContent className={isEditing ? "p-6" : "space-y-4"}>
 
           {isEditing ? (
             // --- DẠNG FORM SỬA ---
@@ -181,48 +108,6 @@ export function MyAccountPage() {
                 </Button>
               </div>
 
-              {/* Chấm công section - Only show if user has tokenA */}
-              {userData.tokenA && (
-                <div className="mt-6 pt-4 border-t">
-                  <Label className="text-lg font-semibold">Chấm công</Label>
-                  {caLamViec && (
-                    <p className="text-sm text-muted-foreground mt-1 mb-3">
-                      Ca: {caLamViec.Ten} ({caLamViec.Code})
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-3 mt-2">
-                    <Button
-                      onClick={handleCheckIn}
-                      disabled={isCheckingIn || !caLamViec}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      {isCheckingIn ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <LogIn className="mr-2 h-4 w-4" />
-                      )}
-                      Vào ca
-                    </Button>
-                    <Button
-                      onClick={handleCheckOut}
-                      disabled={isCheckingOut || !caLamViec}
-                      variant="destructive"
-                    >
-                      {isCheckingOut ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <LogOut className="mr-2 h-4 w-4" />
-                      )}
-                      Ra ca
-                    </Button>
-                  </div>
-                  {!caLamViec && userData.tokenA && (
-                    <p className="text-sm text-yellow-600 mt-2">
-                      Không tìm thấy ca làm việc. Vui lòng kiểm tra Token A.
-                    </p>
-                  )}
-                </div>
-              )}
             </>
           )}
 

@@ -9,7 +9,6 @@ import { Event } from "./entities/Event"
 import { DutyRotation } from "./entities/DutyRotation"
 import { FundTransaction } from "./entities/FundTransaction"
 import { GlobalSetting } from "./entities/GlobalSetting"
-import { AutoCheckInLog } from "./entities/AutoCheckInLog"
 import { CreditTransaction } from "./entities/CreditTransaction"
 import { GameTable } from "./entities/GameTable"
 import { GameTableParticipant } from "./entities/GameTableParticipant"
@@ -44,7 +43,6 @@ export const AppDataSource = new DataSource({
         DutyRotation,
         FundTransaction,
         GlobalSetting,
-        AutoCheckInLog,
         CreditTransaction,
         GameTable,
         GameTableParticipant

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-// Import all frames
+// Import all static frames
 import frame1 from "@/assets/frame/frame1.png";
 import frame2 from "@/assets/frame/frame2.png";
 import frame3 from "@/assets/frame/frame3.png";
@@ -14,6 +14,17 @@ import frame9 from "@/assets/frame/frame9.png";
 import frame10 from "@/assets/frame/frame10.png";
 import frame11 from "@/assets/frame/frame11.png";
 
+// Load all Discord collection frames dynamically
+const discordFrameModules = import.meta.glob<{ default: string }>("../../assets/frame/discord/*.png", {
+    eager: true,
+});
+
+const discordFrames: Record<string, string> = {};
+Object.entries(discordFrameModules).forEach(([path, module]) => {
+    const name = path.split('/').pop()?.replace('.png', '') || path;
+    discordFrames[name] = module.default;
+});
+
 // Per-frame configuration for position and scale adjustments
 // offsetX, offsetY: pixel offset from center (can be negative)
 // scale: multiplier for frame size (1.0 = default, 1.1 = 10% larger, 0.9 = 10% smaller)
@@ -24,7 +35,8 @@ interface FrameConfig {
     scale: number;    // Scale multiplier (1.0 = 100%)
 }
 
-export const frameConfigs: Record<string, FrameConfig> = {
+// Static frame configurations
+const staticFrameConfigs: Record<string, FrameConfig> = {
     frame1: { src: frame1, offsetX: 0, offsetY: 0, scale: 1.3 },
     frame2: { src: frame2, offsetX: -2, offsetY: -10, scale: 1.05 },
     frame3: { src: frame3, offsetX: 4, offsetY: -5, scale: 1.2 },
@@ -38,19 +50,24 @@ export const frameConfigs: Record<string, FrameConfig> = {
     frame11: { src: frame11, offsetX: -3, offsetY: 7, scale: 2.7 },
 };
 
+// Discord frame configurations (tuned for Discord-style decorations)
+const discordFrameConfigs: Record<string, FrameConfig> = {};
+Object.entries(discordFrames).forEach(([name, src]) => {
+    // Discord frames are usually designed to be tighter than our static frames
+    // scale: 1.15 (reduced from 1.25) to fit better
+    // offsetY: -4 to center vertically as many Discord decorations are slightly bottom-heavy
+    discordFrameConfigs[name] = { src, offsetX: 0, offsetY: -4, scale: 0.8 };
+});
+
+export const frameConfigs: Record<string, FrameConfig> = {
+    ...staticFrameConfigs,
+    ...discordFrameConfigs,
+};
+
 // Frame map for dynamic lookup (backward compatibility)
 export const frameMap: Record<string, string> = {
-    frame1,
-    frame2,
-    frame3,
-    frame4,
-    frame5,
-    frame6,
-    frame7,
-    frame8,
-    frame9,
-    frame10,
-    frame11,
+    frame1, frame2, frame3, frame4, frame5, frame6, frame7, frame8, frame9, frame10, frame11,
+    ...discordFrames,
 };
 
 // Frame list for selection UI
@@ -66,6 +83,7 @@ export const frameList = [
     { id: "frame9", src: frame9 },
     { id: "frame10", src: frame10 },
     { id: "frame11", src: frame11 },
+    ...Object.entries(discordFrames).map(([id, src]) => ({ id, src })),
 ];
 
 // Size presets matching common Tailwind classes
@@ -102,6 +120,12 @@ export const AvatarWithFrame = React.forwardRef<
         ? config.frameSize * frameConfig.scale
         : config.frameSize;
 
+    // Calculate proportional offsets based on xl size (200px frame)
+    // This ensures offsets tuned for xl scale correctly to smaller/larger sizes
+    const scaleRatio = config.frameSize / 200;
+    const responsiveOffsetX = frameConfig ? frameConfig.offsetX * scaleRatio : 0;
+    const responsiveOffsetY = frameConfig ? frameConfig.offsetY * scaleRatio : 0;
+
     return (
         <div
             ref={ref}
@@ -130,7 +154,7 @@ export const AvatarWithFrame = React.forwardRef<
                         // Center the larger frame over the avatar with offset adjustments
                         top: '50%',
                         left: '50%',
-                        transform: `translate(calc(-50% + ${frameConfig.offsetX}px), calc(-50% + ${frameConfig.offsetY}px))`,
+                        transform: `translate(calc(-50% + ${responsiveOffsetX}px), calc(-50% + ${responsiveOffsetY}px + 4px))`,
                     }}
                 />
             )}

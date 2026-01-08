@@ -45,26 +45,5 @@ export const updateGlobalTheme = async (themeId: string) => {
     return response.data;
 };
 
-/**
- * Custom API call function with specific settings
- * Uses POST method, 30s timeout, and token in header
- */
-export const callAPI = async (url: string, data?: any, token?: string) => {
-    const settings = {
-        method: "POST" as const,
-        timeout: 30000,
-        headers: {
-            "token": token || "",
-        },
-    };
-
-    const response = await api.post(url, data, {
-        timeout: settings.timeout,
-        headers: {
-            ...settings.headers,
-        },
-    });
-    return response.data;
-};
 
 export default api;

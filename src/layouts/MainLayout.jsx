@@ -114,8 +114,8 @@ export function MainLayout() {
           </header>
 
           <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">
-            <AnimatePresence mode="wait">
-              <PageTransition key={location.pathname} className="h-full">
+            <AnimatePresence>
+              <PageTransition key={location.pathname.replace(/\/$/, "") || "/"} className="h-full">
                 <Outlet />
               </PageTransition>
             </AnimatePresence>

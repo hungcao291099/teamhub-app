@@ -89,21 +89,21 @@ export function UserCard({ user, onUserDeleted, onUserUpdated, isAdmin, currentU
 
 
         {/* Nội dung Card */}
-        <CardHeader className="flex items-center pt-8">
-          <div className="relative">
+        <CardHeader className="flex flex-col items-center pt-8">
+          <div className="relative flex items-center justify-center">
             <AvatarWithFrame frameId={user.selectedFrame} size="lg">
-              <Avatar className="w-24 h-24 mb-4">
+              <Avatar className="w-24 h-24 mb-0 border-none shadow-none">
                 <AvatarImage
                   src={getImageUrl(user.avatarUrl) || 'https://i.pravatar.cc/150'}
                   alt={user.name}
                   className="object-cover"
                 />
-                <AvatarFallback className="text-2xl">{user.name?.[0]}</AvatarFallback>
+                <AvatarFallback className="text-2xl border-none">{user.name?.[0]}</AvatarFallback>
               </Avatar>
             </AvatarWithFrame>
             {/* Online indicator - only show when online */}
             {isOnline && (
-              <span className="absolute bottom-4 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse z-20"
+              <span className="absolute bottom-10 right-10 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse z-20"
                 title="Đang online" />
             )}
           </div>
