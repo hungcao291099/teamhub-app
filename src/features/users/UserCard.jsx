@@ -103,7 +103,7 @@ export function UserCard({ user, onUserDeleted, onUserUpdated, isAdmin, currentU
             </AvatarWithFrame>
             {/* Online indicator - only show when online */}
             {isOnline && (
-              <span className="absolute bottom-10 right-10 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse z-20"
+              <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full animate-pulse z-20"
                 title="Đang online" />
             )}
           </div>
