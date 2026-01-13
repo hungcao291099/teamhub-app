@@ -5,17 +5,24 @@ import { MusicMiniPlayer } from "./MusicMiniPlayer";
 import { cn } from "@/lib/utils";
 
 export const MusicFAB: React.FC = () => {
-    const { musicState } = useMusic();
+    const { musicState, needsInteraction, resumeAudio } = useMusic();
     const [isOpen, setIsOpen] = useState(false);
 
     const hasMusic = !!musicState.currentMusic;
     const isPlaying = musicState.isPlaying;
 
+    const handleClick = () => {
+        if (needsInteraction) {
+            resumeAudio();
+        }
+        setIsOpen(!isOpen);
+    };
+
     return (
         <>
             {/* FAB Button */}
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleClick}
                 className={cn(
                     "fixed top-4 right-4 z-50",
                     "w-12 h-12 rounded-full",

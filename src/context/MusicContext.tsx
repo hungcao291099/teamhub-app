@@ -78,6 +78,8 @@ interface MusicContextType {
     // Status
     isLoading: boolean;
     error: string | null;
+    needsInteraction: boolean;
+    resumeAudio: () => Promise<void>;
 }
 
 const MusicContext = createContext<MusicContextType | null>(null);
@@ -117,6 +119,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [error, setError] = useState<string | null>(null);
     const [voteState, setVoteState] = useState<VoteState | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [needsInteraction, setNeedsInteraction] = useState(false);
     const lastAudioUrlRef = useRef<string>("");
 
     // Computed: Check if current user owns the playing song
@@ -292,7 +295,14 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         audio.currentTime = position;
                     }
                 }
-                audio.play().catch(console.error);
+                audio.play().then(() => {
+                    setNeedsInteraction(false);
+                }).catch(err => {
+                    if (err.name === 'NotAllowedError') {
+                        setNeedsInteraction(true);
+                    }
+                    console.error("Playback failed:", err);
+                });
             } else {
                 audio.pause();
                 if (musicState.pausedAt !== null) {
@@ -432,6 +442,41 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             });
     }, [currentUser]);
 
+    const resumeAudio = useCallback(async () => {
+        if (audioRef.current && musicState.currentMusic) {
+            try {
+                await audioRef.current.play();
+                setNeedsInteraction(false);
+            } catch (err) {
+                console.error("Failed to resume audio:", err);
+            }
+        }
+    }, [musicState.currentMusic]);
+
+    // Add a global interaction listener to "unlock" audio
+    useEffect(() => {
+        if (!needsInteraction) return;
+
+        const handleInteraction = () => {
+            resumeAudio().then(() => {
+                setNeedsInteraction(false);
+            });
+            window.removeEventListener("click", handleInteraction);
+            window.removeEventListener("keydown", handleInteraction);
+            window.removeEventListener("touchstart", handleInteraction);
+        };
+
+        window.addEventListener("click", handleInteraction);
+        window.addEventListener("keydown", handleInteraction);
+        window.addEventListener("touchstart", handleInteraction);
+
+        return () => {
+            window.removeEventListener("click", handleInteraction);
+            window.removeEventListener("keydown", handleInteraction);
+            window.removeEventListener("touchstart", handleInteraction);
+        };
+    }, [needsInteraction, resumeAudio]);
+
     const value: MusicContextType = {
         musicState,
         currentTime,
@@ -460,7 +505,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         cancelVote: cancelVoteAction,
         // Status
         isLoading,
-        error
+        error,
+        needsInteraction,
+        resumeAudio
     };
 
     return (
