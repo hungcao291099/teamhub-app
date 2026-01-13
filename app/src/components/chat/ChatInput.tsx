@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     TextInput,
@@ -17,12 +17,14 @@ interface ChatInputProps {
 
 const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
     const [text, setText] = useState('');
+    const inputRef = useRef<TextInput>(null);
 
     const handleSend = () => {
         const trimmed = text.trim();
         if (trimmed && !disabled) {
             onSend(trimmed);
             setText('');
+            inputRef.current?.focus();
         }
     };
 
@@ -34,6 +36,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled = false }) => {
             <View style={styles.container}>
                 <View style={styles.inputWrapper}>
                     <TextInput
+                        ref={inputRef}
                         style={styles.input}
                         value={text}
                         onChangeText={setText}

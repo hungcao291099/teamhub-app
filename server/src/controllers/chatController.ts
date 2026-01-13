@@ -529,15 +529,7 @@ export const addReaction = async (req: Request, res: Response) => {
         const { messageId } = req.params;
         const { emoji } = req.body;
 
-        // Check if reaction already exists
-        const existing = await reactionRepo.findOne({
-            where: { messageId: parseInt(messageId), userId, emoji }
-        });
-
-        if (existing) {
-            return res.json({ success: true });
-        }
-
+        // Always create a new reaction (no duplicate check - allows multiple reactions per user)
         const reaction = reactionRepo.create({
             messageId: parseInt(messageId),
             userId,

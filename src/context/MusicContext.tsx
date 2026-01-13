@@ -141,7 +141,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
 
         audio.addEventListener("ended", () => {
-            api.post("/music/ended").catch(console.error);
+            api.post("/api/music/ended").catch(console.error);
         });
 
         audio.addEventListener("error", async (_e) => {
@@ -163,10 +163,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         errorMessage = "Link audio đã hết hạn. Đang làm mới...";
                         setError(errorMessage);
                         // Request server to refresh audio URL for current song
-                        if (!isRefreshing) {
+                        // Only attempt if we have a current music URL and not already refreshing
+                        if (!isRefreshing && musicState.currentMusic?.url) {
                             setIsRefreshing(true);
                             try {
-                                await api.post("/music/refresh-audio");
+                                await api.post("/api/music/refresh-audio");
                                 setError(null);
                             } catch (refreshErr) {
                                 setError("Link audio đã hết hạn. Vui lòng thêm lại nhạc.");
@@ -309,19 +310,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // ==================== Playback ====================
 
     const play = useCallback(() => {
-        api.post("/music/play").catch(console.error);
+        api.post("/api/music/play").catch(console.error);
     }, []);
 
     const pause = useCallback(() => {
-        api.post("/music/pause").catch(console.error);
+        api.post("/api/music/pause").catch(console.error);
     }, []);
 
     const stop = useCallback(() => {
-        api.post("/music/stop").catch(console.error);
+        api.post("/api/music/stop").catch(console.error);
     }, []);
 
     const seek = useCallback((position: number) => {
-        api.post("/music/seek", { position }).catch(console.error);
+        api.post("/api/music/seek", { position }).catch(console.error);
         if (audioRef.current) {
             audioRef.current.currentTime = position;
         }
@@ -341,7 +342,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsLoading(true);
         setError(null);
         try {
-            await api.post("/music/queue/add", {
+            await api.post("/api/music/queue/add", {
                 url,
                 userId: currentUser?.id,
                 username: currentUser?.username
@@ -359,40 +360,40 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, []);
 
     const moveInQueue = useCallback((from: number, to: number) => {
-        api.post("/music/queue/move", { from, to }).catch(console.error);
+        api.post("/api/music/queue/move", { from, to }).catch(console.error);
     }, []);
 
     const moveToTop = useCallback((index: number) => {
-        api.post("/music/queue/move-to-top", { index }).catch(console.error);
+        api.post("/api/music/queue/move-to-top", { index }).catch(console.error);
     }, []);
 
     const clearQueue = useCallback(() => {
-        api.delete("/music/queue/clear").catch(console.error);
+        api.delete("/api/music/queue/clear").catch(console.error);
     }, []);
 
     // ==================== Playback Control ====================
 
     const playNext = useCallback(() => {
-        api.post("/music/next").catch(console.error);
+        api.post("/api/music/next").catch(console.error);
     }, []);
 
     const playPrevious = useCallback(() => {
-        api.post("/music/previous").catch(console.error);
+        api.post("/api/music/previous").catch(console.error);
     }, []);
 
     const setLoopMode = useCallback((mode: LoopMode) => {
-        api.post("/music/loop", { mode }).catch(console.error);
+        api.post("/api/music/loop", { mode }).catch(console.error);
     }, []);
 
     const toggleShuffle = useCallback(() => {
-        api.post("/music/shuffle").catch(console.error);
+        api.post("/api/music/shuffle").catch(console.error);
     }, []);
 
     // ==================== Voting Functions ====================
 
     const executeAction = useCallback(async (actionType: VoteActionType, targetIndex?: number) => {
         try {
-            const response = await api.post("/music/action", {
+            const response = await api.post("/api/music/action", {
                 actionType,
                 userId: currentUser?.id,
                 username: currentUser?.username,
@@ -415,7 +416,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const submitVoteAction = useCallback(() => {
         if (!voteState) return;
-        api.post("/music/vote", { userId: currentUser?.id })
+        api.post("/api/music/vote", { userId: currentUser?.id })
             .then(() => {
                 toast.success("Đã vote!", { duration: 2000 });
             })
@@ -425,7 +426,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, [currentUser, voteState]);
 
     const cancelVoteAction = useCallback(() => {
-        api.post("/music/vote/cancel", { userId: currentUser?.id })
+        api.post("/api/music/vote/cancel", { userId: currentUser?.id })
             .catch((err) => {
                 toast.error(err.response?.data?.error || "Không thể hủy vote");
             });

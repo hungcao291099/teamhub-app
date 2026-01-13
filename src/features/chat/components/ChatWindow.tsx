@@ -153,6 +153,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ onBack, hideHeader, onTo
             console.error("Error sending message:", error);
         } finally {
             setIsSending(false);
+            textareaRef.current?.focus();
         }
     };
 

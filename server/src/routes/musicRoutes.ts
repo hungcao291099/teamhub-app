@@ -343,7 +343,8 @@ router.post("/refresh-audio", async (req: Request, res: Response) => {
         const state = getMusicState();
 
         if (!state.currentMusic || !state.currentMusic.url) {
-            return res.status(400).json({ error: "No music currently playing" });
+            // No music playing - return success=false instead of error to avoid noisy 400s
+            return res.json({ success: false, reason: "No music currently playing" });
         }
 
         // Re-extract audio info using original URL

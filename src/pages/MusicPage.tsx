@@ -176,6 +176,8 @@ const MusicPage: React.FC = () => {
     } = useMusic();
 
     const [url, setUrl] = useState("");
+    const [isSeeking, setIsSeeking] = useState(false);
+    const [seekValue, setSeekValue] = useState(0);
 
     const hasMusic = !!musicState.currentMusic;
     const isPlaying = musicState.isPlaying;
@@ -212,8 +214,16 @@ const MusicPage: React.FC = () => {
         } catch (err) { }
     };
 
-    const handleSeek = (value: number[]) => {
-        if (duration > 0) seek((value[0] / 100) * duration);
+    const handleSeekChange = (value: number[]) => {
+        setIsSeeking(true);
+        setSeekValue(value[0]);
+    };
+
+    const handleSeekCommit = (value: number[]) => {
+        if (duration > 0) {
+            seek((value[0] / 100) * duration);
+        }
+        setIsSeeking(false);
     };
 
     const cycleLoopMode = () => {
@@ -306,8 +316,9 @@ const MusicPage: React.FC = () => {
                                 {/* Progress */}
                                 <div className="mb-4">
                                     <Slider
-                                        value={[progress]}
-                                        onValueChange={handleSeek}
+                                        value={[isSeeking ? seekValue : progress]}
+                                        onValueChange={handleSeekChange}
+                                        onValueCommit={handleSeekCommit}
                                         max={100}
                                         step={0.1}
                                         className={cn("cursor-pointer", !canSeek && "opacity-50 pointer-events-none")}

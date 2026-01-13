@@ -27,8 +27,8 @@ interface MessageListProps {
 }
 
 export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
-    const { messages, isLoading, loadMoreMessages, addReaction, removeReaction, deleteMessage, activeConversationId, typingUsers } = useChat();
-    const { currentUser } = useAuth();
+    const { messages, isLoading, loadMoreMessages, addReaction, deleteMessage, activeConversationId, typingUsers } = useChat();
+    const { currentUser, onlineUsers } = useAuth();
     const scrollRef = useRef<HTMLDivElement>(null);
     const prevScrollHeightRef = useRef(0);
     const shouldScrollToBottomRef = useRef(true); // Default to true for initial load
@@ -113,12 +113,9 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
         }
     };
 
-    const handleReaction = async (messageId: number, emoji: string, hasReacted: boolean, myReaction?: any) => {
-        if (hasReacted && myReaction) {
-            await removeReaction(messageId, emoji);
-        } else {
-            await addReaction(messageId, emoji);
-        }
+    const handleReaction = async (messageId: number, emoji: string, _hasReacted: boolean, _myReaction?: any) => {
+        // Always add reaction (increment only, no cancellation)
+        await addReaction(messageId, emoji);
     };
 
     const handleDelete = (messageId: number) => {
@@ -172,12 +169,17 @@ export const MessageList: React.FC<MessageListProps> = ({ onReply }) => {
                 {/* Left Column: Avatar or Timestamp on hover (Discord style) */}
                 <div className="w-[50px] shrink-0 pt-0.5 select-none text-right pr-3">
                     {showHeader ? (
-                        <AvatarWithFrame frameId={(message as any).senderSelectedFrame} size="sm">
-                            <Avatar className="h-10 w-10 cursor-pointer hover:drop-shadow-md transition-all active:scale-95">
-                                <AvatarImage src={getImageUrl(message.senderAvatarUrl) || undefined} alt={message.senderName} />
-                                <AvatarFallback>{message.senderName.charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                        </AvatarWithFrame>
+                        <div className="relative inline-block">
+                            <AvatarWithFrame frameId={(message as any).senderSelectedFrame} size="sm">
+                                <Avatar className="h-10 w-10 cursor-pointer hover:drop-shadow-md transition-all active:scale-95">
+                                    <AvatarImage src={getImageUrl(message.senderAvatarUrl) || undefined} alt={message.senderName} />
+                                    <AvatarFallback>{message.senderName.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                            </AvatarWithFrame>
+                            {onlineUsers.includes(message.senderId) && (
+                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                            )}
+                        </div>
                     ) : (
                         <span className="text-[10px] text-muted-foreground hidden group-hover:inline-block align-top mt-1">
                             {/* Valid timestamp for consecutive messages? Usually empty or condensed time */}
